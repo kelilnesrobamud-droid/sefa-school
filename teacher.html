@@ -1,1 +1,85 @@
+<!DOCTYPE html>
+<html lang="am">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Safe School - Teacher Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-slate-50 font-sans pb-20 text-gray-800">
+
+    <div class="bg-[#0d7a70] p-6 rounded-b-[40px] text-white shadow-xl flex flex-col gap-4">
+        <div class="flex justify-between items-center">
+            <h1 class="text-xl font-black italic text-yellow-400">የኡስታዝ/መምህር ገጽ</h1>
+            <a href="index.html" class="text-xs bg-black/20 px-3 py-2 rounded-xl font-bold text-white shadow-sm"><i class="fas fa-home"></i></a>
+        </div>
+        <div class="relative">
+            <input type="text" id="teacherNameInput" placeholder="የእርስዎን ስም ያስገቡ..." class="w-full p-3.5 rounded-2xl border-none text-gray-800 outline-none text-sm font-bold shadow-lg">
+            <button id="loadStudentsBtn" class="absolute right-2 top-2 bg-yellow-500 text-slate-900 px-4 py-1.5 rounded-xl text-xs font-black shadow">አምጣ</button>
+        </div>
+    </div>
+
+    <div class="px-5 mt-6 space-y-4">
+        <div id="infoBox" class="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl text-xs font-bold text-emerald-800 hidden">
+            <i class="fas fa-info-circle mr-1"></i> ሁሉም ተማሪዎች በዲፎልት "መጥቷል" ተብለዋል። የቀረውን ብቻ ቀይረው ከታች ይጫኑ።
+        </div>
+
+        <form id="attendanceForm" class="space-y-4">
+            <div id="teacherStudentContainer" class="space-y-3"></div>
+            <button type="submit" id="saveAllAttendanceBtn" class="w-full bg-[#0d7a70] text-white p-4 rounded-2xl font-black shadow-lg hidden">የዕለቱን ክትትል በአንድ ላይ መዝግብ</button>
+        </form>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, query, where, getDocs, doc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = { apiKey: "AIzaSyBKw3ektgxdfvqcO-JHzJwjvfSkc-K_41A", authDomain: "safe-school-b3f87.firebaseapp.com", projectId: "safe-school-b3f87", storageBucket: "safe-school-b3f87.firebasestorage.app", messagingSenderId: "43051328645", appId: "1:43051328645:web:2664448d0b43a293daf5ec" };
+        const app = initializeApp(firebaseConfig); 
+        const db = getFirestore(app);
+
+        let activeStudents = [];
+
+        document.getElementById('loadStudentsBtn').onclick = async () => {
+            const tName = document.getElementById('teacherNameInput').value.trim();
+            if(!tName) return alert("ስም ያስገቡ");
+            const container = document.getElementById('teacherStudentContainer');
+            container.innerHTML = "<p class='text-center text-xs font-bold text-gray-400 py-4'>በመፈለግ ላይ...</p>";
+            
+            const q = query(collection(db, "students"), where("assignedTeacher", "==", tName));
+            const snap = await getDocs(q);
+            if(snap.empty) { container.innerHTML = "<p class='text-center text-xs text-rose-500 font-bold'>የተመዘገበ ተማሪ የለም</p>"; return; }
+            
+            container.innerHTML = ""; activeStudents = [];
+            snap.forEach(d => {
+                const data = d.data(); const id = d.id;
+                activeStudents.push({ id, name: data.studentName });
+                container.innerHTML += `
+                    <div class="bg-white p-4 rounded-[25px] border shadow-sm space-y-2">
+                        <div class="font-black text-sm text-slate-800">${data.studentName}</div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <label class="p-2 border rounded-xl text-center text-xs font-bold cursor-pointer"><input type="radio" name="status_${id}" value="Present" checked onchange="document.getElementById('l_${id}').classList.add('hidden')"> መጥቷል</label>
+                            <label class="p-2 border rounded-xl text-center text-xs font-bold cursor-pointer"><input type="radio" name="status_${id}" value="Absent" onchange="document.getElementById('l_${id}').classList.add('hidden')"> ቀርቷል</label>
+                            <label class="p-2 border rounded-xl text-center text-xs font-bold cursor-pointer"><input type="radio" name="status_${id}" value="Late" onchange="document.getElementById('l_${id}').classList.remove('hidden')"> አርፍዷል</label>
+                        </div>
+                        <div id="l_${id}" class="hidden p-2 bg-amber-50 rounded-xl"><input type="number" id="m_${id}" value="5" class="w-20 p-1 text-center rounded border text-xs"> ደቂቃ</div>
+                    </div>`;
+            });
+            document.getElementById('saveAllAttendanceBtn').classList.remove('hidden');
+            document.getElementById('infoBox').classList.remove('hidden');
+        };
+
+        document.getElementById('attendanceForm').onsubmit = async (e) => {
+            e.preventDefault(); const todayStr = new Date().toLocaleDateString();
+            for(let s of activeStudents) {
+                const status = document.querySelector(`input[name="status_${s.id}"]:checked`).value;
+                let mins = status === "Late" ? document.getElementById(`m_${s.id}`).value : "0";
+                await updateDoc(doc(db, "students", s.id), { lastAttendance: status, lateMinutes: mins, attendanceDate: todayStr, attendanceHistory: arrayUnion({ date: todayStr, status: status, minutes: mins }) });
+            }
+            alert("ተመዝግቧል!"); location.reload();
+        };
+    </script>
+</body>
+</html>
 
