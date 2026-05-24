@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="am">
 <head>
@@ -44,10 +43,20 @@
                 snap.forEach(d => {
                     const data = d.data(); const id = d.id; const paid = data.paidMonths || []; const history = data.attendanceHistory || [];
                     
+                    // ከአድሚኑ የዳታቤዝ ምዝገባ የመጣ የመምህር መረጃ እና አጠቃላይ የክፍያ ሁኔታ
+                    const teacherName = data.teacherName || "ያልተመደበ";
+                    const teacherPhone = data.teacherPhone || "---";
+                    const generalPayment = data.paymentStatus === 'paid' ? '<span class="text-emerald-600 font-black">🟢 ሙሉ ክፍያ ተከፍሏል</span>' : '<span class="text-rose-500 font-black">❌ ክፍያ አልተጠናቀቀም</span>';
+
                     res.innerHTML += `
                         <div class="bg-white rounded-[35px] shadow-lg p-6 mb-6 border">
-                            <h2 class="text-lg font-black text-[#0d7a70] border-b pb-2 mb-4 italic"><i class="fas fa-child mr-1"></i> ${data.studentName}</h2>
+                            <h2 class="text-lg font-black text-[#0d7a70] border-b pb-2 mb-2 italic"><i class="fas fa-child mr-1"></i> ${data.studentName}</h2>
                             
+                            <div class="mb-4 bg-indigo-50/50 p-2.5 rounded-2xl border border-indigo-100 text-left">
+                                <p class="text-[11px] text-gray-700 font-bold"><i class="fas fa-chalkboard-teacher text-indigo-700 mr-1"></i> <b>ክፍል መምህር፦</b> ${teacherName}</p>
+                                <p class="text-[10px] text-gray-500 font-medium mt-0.5"><i class="fas fa-phone-alt text-gray-400 mr-1"></i> <b>የመምህር ስልክ፦</b> ${teacherPhone}</p>
+                            </div>
+
                             <div class="grid grid-cols-2 gap-3 mb-4 text-center">
                                 <div class="bg-slate-50 p-3 rounded-2xl border">
                                     <p class="text-[10px] text-gray-400 font-bold">ዛሬ (${data.attendanceDate || '---'})</p>
@@ -59,20 +68,22 @@
                                 </div>
                             </div>
 
-                            <button onclick="document.getElementById('h_${id}').classList.toggle('hidden')" class="w-full bg-slate-100 p-2.5 rounded-xl text-xs font-black mb-2 border">የቀደሙ ቀናት የክትትል ታሪክ (History)</button>
-                            <div id="h_${id}" class="hidden p-3 border rounded-xl space-y-1 text-xs max-h-40 overflow-y-auto bg-gray-50">
+                            <button onclick="document.getElementById('h_${id}').classList.toggle('hidden')" class="w-full bg-slate-100 p-2.5 rounded-xl text-xs font-black mb-3 border">የቀደሙ ቀናት የክትትል ታሪክ (History)</button>
+                            <div id="h_${id}" class="hidden p-3 border rounded-xl space-y-1 text-xs max-h-40 overflow-y-auto bg-gray-50 mb-3">
                                 ${history.reverse().map(h => `<div class="flex justify-between border-b py-1"><span>${h.date}</span><span class="font-bold">${h.status} ${h.status==='Late'?`(${h.minutes}ደ)` : ''}</span></div>`).join('')}
                             </div>
                             
-                            <button onclick="document.getElementById('pm_${id}').classList.toggle('hidden')" class="w-full bg-indigo-50 text-indigo-700 p-3 rounded-2xl font-black text-xs border italic">የክፍያ ሁኔታ</button>
-                            <div id="pm_${id}" class="hidden grid grid-cols-3 gap-2 p-2 bg-gray-50 rounded-2xl">
-                                ${amharicMonths.map(m => `<div class="p-2 rounded-xl border text-center text-[10px] ${paid.includes(m) ? 'bg-emerald-500 text-white' : 'bg-white text-gray-300'}">${m}</div>`).join('')}
+                            <button onclick="document.getElementById('pm_${id}').classList.toggle('hidden')" class="w-full bg-indigo-50 text-indigo-700 p-3 rounded-2xl font-black text-xs border italic flex justify-between items-center">
+                                <span>የወርሃዊ ክፍያ ሁኔታ</span>
+                                <span class="text-[10px] font-bold">${generalPayment}</span>
+                            </button>
+                            <div id="pm_${id}" class="hidden grid grid-cols-3 gap-2 p-2 bg-gray-50 rounded-2xl mt-2">
+                                ${amharicMonths.map(m => `<div class="p-2 rounded-xl border text-center text-[10px] ${data.paymentStatus === 'paid' || paid.includes(m) ? 'bg-emerald-500 text-white font-bold' : 'bg-white text-gray-300'}">${m}</div>`).join('')}
                             </div>
                         </div>`;
                 });
             });
         };
-    </script>
+    </script> 
 </body>
 </html>
- 
