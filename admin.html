@@ -87,6 +87,16 @@
             </div>
 
             <div class="space-y-2">
+                <button onclick="toggleSection('yearly-section')" class="w-full bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-[25px] font-black text-xs flex justify-between items-center shadow-sm">
+                    <span><i class="fas fa-university mr-1"></i> ⏱️ የዓመቱ አጠቃላይ ማጠቃለያ (የክትትል Analytics)</span>
+                    <i class="fas fa-chevron-down text-gray-400"></i>
+                </button>
+                <div id="yearly-section" class="hidden bg-white p-4 rounded-[25px] shadow border text-xs">
+                    <div id="yearly-list"></div>
+                </div>
+            </div>
+
+            <div class="space-y-2">
                 <button onclick="toggleSection('all-students-section')" class="w-full bg-blue-50 border border-blue-200 text-blue-700 p-4 rounded-[25px] font-black text-xs flex justify-between items-center shadow-sm">
                     <span id="total-students-title"><i class="fas fa-users mr-1"></i> 🏢 አጠቃላይ የተማሪዎች ብዛትና ሙሉ ዝርዝር</span>
                     <i class="fas fa-chevron-down text-gray-400"></i>
@@ -172,12 +182,9 @@
         }
 
         function loadLiveReports() {
-            // ሀ. የዛሬ ዕለታዊ መረጃዎች (attendance)
+            // ሀ. የዛሬ ዕለታዊ መረጃዎች
             db.collection("attendance").onSnapshot(snapshot => {
-                currentOnTimeStudents = [];
-                currentLateStudents = [];
-                currentAbsentStudents = [];
-                
+                currentOnTimeStudents = []; currentLateStudents = []; currentAbsentStudents = [];
                 const dailyDiv = document.getElementById('daily-list');
                 dailyDiv.innerHTML = "";
 
@@ -187,17 +194,14 @@
                     let studentObj = { name: data.studentName || "ያልታወቀ ተማሪ", detail: "" };
                     
                     if (data.status === "Present" || data.status === "On Time" || data.status === "በሰዓቱ") {
-                        studentObj.detail = "በሰዓቱ ገብቷል";
-                        currentOnTimeStudents.push(studentObj);
+                        studentObj.detail = "በሰዓቱ ገብቷል"; currentOnTimeStudents.push(studentObj);
                         minutesBadge = `<span class="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded-full font-bold">በሰዓቱ</span>`;
                     } else if (data.status === "Absent" || data.status === "ቀሪ") {
-                        studentObj.detail = "ዛሬ ቀርቷል";
-                        currentAbsentStudents.push(studentObj);
+                        studentObj.detail = "ዛሬ ቀርቷል"; currentAbsentStudents.push(studentObj);
                         minutesBadge = `<span class="bg-rose-100 text-rose-800 text-[10px] px-2 py-0.5 rounded-full font-bold">ቀርቷል</span>`;
                     } else {
                         let mins = data.minutes || "---";
-                        studentObj.detail = `አርፍዷል (${mins} ደቂቃ)`;
-                        currentLateStudents.push(studentObj);
+                        studentObj.detail = `አርፍዷል (${mins} ደቂቃ)`; currentLateStudents.push(studentObj);
                         minutesBadge = `<span class="bg-amber-100 text-amber-800 text-[10px] px-2 py-0.5 rounded-full font-bold">አርፍዷል (${mins}ደ)</span>`;
                     }
 
@@ -213,10 +217,10 @@
                 document.getElementById('box-absent').innerText = currentAbsentStudents.length;
 
                 if(activeFilterType) renderFilteredList(activeFilterType);
-                triggerLiveSearch(); // ሪፍሬሽ ሲሆን ሰርቹን ጠብቆ ለማቆየት
+                triggerLiveSearch();
             });
 
-            // ለ. ወርሃዊ ጥቅል ሪፖርት ታሪክ
+            // ለ. ወርሃዊ ጥቅል ሪፖርት
             db.collection("attendance").onSnapshot(snapshot => {
                 const monthlyDiv = document.getElementById('monthly-list');
                 monthlyDiv.innerHTML = "";
@@ -240,15 +244,18 @@
                 triggerLiveSearch();
             });
 
-            // ሐ. አጠቃላይ ተማሪዎች ሙሉ ዝርዝር (ከነ ማጥፊያ በተን)
+            // ሐ. አጠቃላይ ተማሪዎች ሙሉ ዝርዝር እና የክፍያ ሁኔታ
             db.collection("students").onSnapshot(snapshot => {
                 const totalTitle = document.getElementById('total-students-title');
                 const allListDiv = document.getElementById('all-students-list');
                 const paidListDiv = document.getElementById('paid-list');
                 const unpaidListDiv = document.getElementById('unpaid-list');
+                const yearlyDiv = document.getElementById('yearly-list');
 
                 totalTitle.innerHTML = `<i class="fas fa-users mr-1"></i> 🏢 አጠቃላይ የተማሪዎች ብዛትና ሙሉ ዝርዝር (${snapshot.size})`;
                 allListDiv.innerHTML = ""; paidListDiv.innerHTML = ""; unpaidListDiv.innerHTML = "";
+                
+                let totalPaidCount = 0;
 
                 snapshot.forEach(doc => {
                     const data = doc.data();
@@ -257,14 +264,14 @@
                     const phone = data.parentPhone || "ስልክ የለም";
                     const paidMonths = data.paidMonths || [];
 
-                    // 1. አጠቃላይ ዝርዝር ከነ Delete Button ጋር
+                    // 1. አጠቃላይ ዝርዝር
                     allListDiv.innerHTML += `
                         <div class="p-2.5 border-b flex justify-between items-center bg-gray-50 rounded-xl mb-1 student-item-row" data-name="${name.toLowerCase()}">
                             <div>
                                 <p class="font-bold text-gray-800">${name}</p>
                                 <p class="text-[10px] text-gray-400">ወላጅ፦ ${phone}</p>
                             </div>
-                            <button onclick="deleteStudent('${id}', '${name}')" class="text-rose-600 bg-rose-50 hover:bg-rose-100 p-2.5 rounded-xl transition" title="ተማሪውን ሰርዝ">
+                            <button onclick="deleteStudent('${id}', '${name}')" class="text-rose-600 bg-rose-50 hover:bg-rose-100 p-2.5 rounded-xl transition">
                                 <i class="fas fa-trash-alt"></i>
                             </button>
                         </div>`;
@@ -276,14 +283,22 @@
                             <p class="text-[9px] text-gray-500">${paidMonths.length > 0 ? 'የከፈሉባቸው፦ ' + paidMonths.join(', ') : '❌ ምንም አልተከፈለም'}</p>
                         </div>`;
                     
-                    if(paidMonths.length > 0) paidListDiv.innerHTML += paymentBox;
+                    if(paidMonths.length > 0) { paidListDiv.innerHTML += paymentBox; totalPaidCount++; }
                     else unpaidListDiv.innerHTML += paymentBox;
                 });
+
+                // 3. የዓመቱ አጠቃላይ ማጠቃለያ (ቁጥር 4) ዳታ መሙላት
+                yearlyDiv.innerHTML = `
+                    <div class="p-4 bg-amber-50/40 rounded-2xl border border-amber-200 text-gray-700 space-y-2 font-bold">
+                        <p class="text-xs">🏢 ጠቅላላ የተመዘገቡ ተማሪዎች፦ <span class="text-amber-800 font-black text-sm">${snapshot.size}</span></p>
+                        <p class="text-xs text-emerald-700">🟢 ክፍያ የፈጸሙ (የከፈሉ)፦ <span>${totalPaidCount} ተማሪዎች</span></p>
+                        <p class="text-xs text-rose-700">🔴 ክፍያ ያልፈጸሙ (ያልከፈሉ)፦ <span>${snapshot.size - totalPaidCount} ተማሪዎች</span></p>
+                    </div>`;
+
                 triggerLiveSearch();
             });
         }
 
-        // 🗑️ ተማሪን ከዳታቤዝ ሙሉ በሙሉ የመቀነስ (ማጥፊያ) ፈንክሽን
         function deleteStudent(id, name) {
             if(confirm(`⚠️ እርግጠኛ ነዎት? "${name}" የተባለውን ተማሪ ከነጭራሹ ከሲስተሙ መሰረዝ ይፈልጋሉ?`)) {
                 db.collection("students").doc(id).delete()
@@ -292,38 +307,19 @@
             }
         }
 
-        // 🔍 ሁሉንም ቦታዎች በአንድ ጊዜ የሚፈልግ የቀጥታ ጃቫስክሪፕት ፍለጋ
         function triggerLiveSearch() {
             const query = document.getElementById('admin-search-input').value.toLowerCase().trim();
-            
-            // የዛሬ የክትትል ማጣሪያ
-            document.querySelectorAll('.daily-item-row').forEach(row => {
-                row.style.display = row.getAttribute('data-name').includes(query) ? 'flex' : 'none';
-            });
-
-            // የወር ጥቅል ማጣሪያ
-            document.querySelectorAll('.monthly-item-row').forEach(row => {
-                row.style.display = row.getAttribute('data-name').includes(query) ? 'block' : 'none';
-            });
-
-            // ጠቅላላ ተማሪዎች ማጣሪያ
-            document.querySelectorAll('.student-item-row').forEach(row => {
-                row.style.display = row.getAttribute('data-name').includes(query) ? 'flex' : 'none';
-            });
-
-            // የክፍያ ማጣሪያ
-            document.querySelectorAll('.payment-item-row').forEach(row => {
-                row.style.display = row.getAttribute('data-name').includes(query) ? 'block' : 'none';
-            });
+            document.querySelectorAll('.daily-item-row').forEach(row => { row.style.display = row.getAttribute('data-name').includes(query) ? 'flex' : 'none'; });
+            document.querySelectorAll('.monthly-item-row').forEach(row => { row.style.display = row.getAttribute('data-name').includes(query) ? 'block' : 'none'; });
+            document.querySelectorAll('.student-item-row').forEach(row => { row.style.display = row.getAttribute('data-name').includes(query) ? 'flex' : 'none'; });
+            document.querySelectorAll('.payment-item-row').forEach(row => { row.style.display = row.getAttribute('data-name').includes(query) ? 'block' : 'none'; });
         }
 
         function toggleFilter(type) {
             const section = document.getElementById('filter-display-section');
             if (activeFilterType === type) { clearFilter(); } 
             else {
-                section.classList.remove('hidden');
-                activeFilterType = type;
-                renderFilteredList(type);
+                section.classList.remove('hidden'); activeFilterType = type; renderFilteredList(type);
                 section.scrollIntoView({ behavior: 'smooth' });
             }
         }
@@ -332,14 +328,12 @@
             const title = document.getElementById('filter-title');
             const listDiv = document.getElementById('filtered-students-list');
             listDiv.innerHTML = "";
-
             let selectedList = [], colorClass = "";
             if (type === 'On Time') { selectedList = currentOnTimeStudents; title.innerHTML = `💚 በሰዓቱ የመጡ (${selectedList.length})`; colorClass = "bg-emerald-50 text-emerald-800 border-emerald-200"; } 
             else if (type === 'Late') { selectedList = currentLateStudents; title.innerHTML = `💛 ያረፈዱ (${selectedList.length})`; colorClass = "bg-amber-50 text-amber-800 border-amber-200"; } 
             else if (type === 'Absent') { selectedList = currentAbsentStudents; title.innerHTML = `❤️ የዛሬ የቀሩ (${selectedList.length})`; colorClass = "bg-rose-50 text-rose-800 border-rose-200"; }
 
             if(selectedList.length === 0) { listDiv.innerHTML = `<p class="text-gray-400 text-xs italic py-2">ምንም የለም።</p>`; return; }
-
             selectedList.forEach(stud => {
                 listDiv.innerHTML += `
                     <div class="p-3 border rounded-2xl text-xs font-bold flex justify-between items-center ${colorClass}">
@@ -367,4 +361,5 @@
     </script>
 </body>
 </html>
+
 
