@@ -1,1 +1,192 @@
 
+<!DOCTYPE html>
+<html lang="am">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>የመምህራን መቆጣጠሪያ ማዕከል</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen font-sans pb-10">
+
+    <header class="bg-indigo-900 text-white p-6 rounded-b-[40px] shadow-2xl text-center">
+        <div class="flex justify-between items-center max-w-4xl mx-auto">
+            <a href="index.html" class="bg-black/20 px-4 py-2 rounded-xl text-xs font-bold hover:bg-black/4"><i class="fas fa-home"></i> ዋና ገጽ</a>
+            <h1 class="text-xl font-black italic text-yellow-300">የመምህራን ፖርታል</h1>
+            <div class="w-10"></div>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto p-4 space-y-4">
+        
+        <div id="teacher-login" class="bg-white p-6 rounded-[35px] shadow-lg max-w-md mx-auto mt-10 border text-center">
+            <h2 class="text-base font-black mb-3 text-indigo-900 italic">በአስተማሪ ስልክ ቁጥር ይግቡ</h2>
+            <input type="tel" id="teacher-phone-input" placeholder="የአስተማሪ ስልክ ቁጥር (e.g. 09...)" class="w-full p-3 border rounded-2xl mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-900 font-bold text-center text-sm">
+            <button onclick="loginTeacher()" class="w-full bg-indigo-600 text-white py-3 rounded-2xl hover:bg-indigo-700 font-black italic shadow-md text-xs">የእኔን ተማሪዎች አውርድ</button>
+        </div>
+
+        <div id="teacher-dashboard" class="hidden space-y-4">
+            
+            <div class="bg-gradient-to-r from-indigo-800 to-slate-800 text-white p-4 rounded-[25px] shadow-md flex justify-between items-center">
+                <div>
+                    <h2 class="text-sm font-black italic" id="display-teacher-name">መምህር፦ ---</h2>
+                    <p class="text-[10px] text-indigo-200 font-medium mt-0.5" id="display-teacher-phone">ስልክ፦ ---</p>
+                </div>
+                <span class="text-xs font-bold bg-white/20 px-3 py-1 rounded-full" id="students-count-badge">0 ተማሪዎች</span>
+            </div>
+
+            <div class="bg-white p-4 rounded-[25px] shadow border space-y-3">
+                <h3 class="font-black text-gray-800 text-xs italic border-b pb-2">📋 የእለታዊ የተማሪዎች መረጃ መሙያ ፎርም</h3>
+                <div id="my-students-list" class="space-y-4 max-h-[600px] overflow-y-auto"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const firebaseConfig = { apiKey: "AIzaSyBKw3ektgxdfvqcO-JHzJwjvfSkc-K_41A", authDomain: "safe-school-b3f87.firebaseapp.com", projectId: "safe-school-b3f87", storageBucket: "safe-school-b3f87.firebasestorage.app", messagingSenderId: "43051328645", appId: "1:43051328645:web:2664448d0b43a293daf5ec" };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        const todayDefault = new Date().toLocaleDateString('en-CA');
+
+        function loginTeacher() {
+            const phone = document.getElementById('teacher-phone-input').value.trim();
+            if(!phone) return alert("እባክዎ ስልክ ቁጥር ያስገቡ");
+
+            db.collection("students").where("teacherPhone", "==", phone).onSnapshot(snapshot => {
+                if(snapshot.empty) return alert("በዚህ ስልክ የተመዘገበ መምህር አልተገኘም!");
+
+                document.getElementById('teacher-login').classList.add('hidden');
+                document.getElementById('teacher-dashboard').classList.remove('hidden');
+
+                let tName = "";
+                const listDiv = document.getElementById('my-students-list');
+                listDiv.innerHTML = "";
+                document.getElementById('students-count-badge').innerText = `${snapshot.size} ተማሪዎች`;
+
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const id = doc.id;
+                    tName = data.teacherName || "መምህር";
+
+                    listDiv.innerHTML += `
+                        <div class="p-4 border rounded-3xl bg-gray-50 space-y-3 shadow-sm">
+                            <div class="flex justify-between items-center border-b pb-1">
+                                <span class="font-black text-indigo-900 text-sm"><i class="fas fa-user-graduate mr-1"></i> ${data.studentName}</span>
+                                <span class="text-[10px] text-gray-400 font-bold">የወላጅ ስልክ፦ ${data.parentPhone}</span>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-5 gap-2 items-center">
+                                <div>
+                                    <label class="block text-[9px] text-gray-400 font-bold mb-0.5">ቀን</label>
+                                    <input type="date" id="date_${id}" value="${todayDefault}" class="w-full p-2 border rounded-xl text-[11px] font-bold outline-none bg-white">
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-[9px] text-gray-400 font-bold mb-0.5">የክትትል ሁኔታ</label>
+                                    <select id="status_${id}" onchange="toggleMins('${id}')" class="w-full p-2 border rounded-xl text-[11px] font-bold outline-none bg-white">
+                                        <option value="Present">🟢 በሰዓቱ ገብቷል</option>
+                                        <option value="Late">🟡 አርፍዷል</option>
+                                        <option value="Absent">🔴 ቀርቷል</option>
+                                    </select>
+                                    <input type="number" id="mins_${id}" placeholder="ደቂቃ" class="hidden w-full mt-1 p-1.5 border rounded-xl text-[11px] font-bold text-center outline-none">
+                                </div>
+
+                                <div>
+                                    <label class="block text-[9px] text-gray-400 font-bold mb-0.5">የባህሪ/ፀባይ ሁኔታ</label>
+                                    <select id="behavior_${id}" class="w-full p-2 border rounded-xl text-[11px] font-bold outline-none bg-white">
+                                        <option value="ጥሩ">🌟 ጥሩ</option>
+                                        <option value="መካከለኛ">👍 መካከለኛ</option>
+                                        <option value="ዝቅተኛ">⚠️ ዝቅተኛ</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label class="block text-[9px] text-gray-400 font-bold mb-0.5">የትምህርት ክትትል</label>
+                                    <select id="academic_${id}" class="w-full p-2 border rounded-xl text-[11px] font-bold outline-none bg-white">
+                                        <option value="ጥሩ">⭐ ጥሩ</option>
+                                        <option value="መካከለኛ">📉 መካከለኛ</option>
+                                        <option value="ዝቅተኛ">❌ ዝቅተኛ</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label class="block text-[9px] text-gray-400 font-bold mb-0.5">የፈተና ውጤት (%)</label>
+                                    <input type="text" id="score_${id}" placeholder="e.g. 85%" class="w-full p-2 border rounded-xl text-[11px] font-bold outline-none text-center bg-white" value="${data.examScore || ''}">
+                                </div>
+                            </div>
+
+                            <button onclick="saveStudentData('${id}', '${data.studentName}')" class="w-full bg-[#0d7a70] text-white py-2 rounded-xl text-[11px] font-black italic shadow hover:bg-teal-700 transition flex items-center justify-center gap-1">
+                                <i class="fas fa-save"></i> የዛሬውን መረጃ መዝግብና ሶስቱም ቦታ አዘምን
+                            </button>
+                        </div>`;
+                });
+
+                document.getElementById('display-teacher-name').innerText = `መምህር፦ ${tName}`;
+                document.getElementById('display-teacher-phone').innerText = `ስልክ፦ ${phone}`;
+            });
+        }
+
+        function toggleMins(id) {
+            const status = document.getElementById(`status_${id}`).value;
+            const minsInput = document.getElementById(`mins_${id}`);
+            if(status === 'Late') minsInput.classList.remove('hidden');
+            else minsInput.classList.add('hidden');
+        }
+
+        function saveStudentData(id, studentName) {
+            const selectedDate = document.getElementById(`date_${id}`).value;
+            const status = document.getElementById(`status_${id}`).value;
+            const mins = document.getElementById(`mins_${id}`).value;
+            const behavior = document.getElementById(`behavior_${id}`).value;
+            const academic = document.getElementById(`academic_${id}`).value;
+            let score = document.getElementById(`score_${id}`).value.trim();
+
+            if(score && !score.includes('%')) score += '%'; // ፐርሰንት ምልክት በራሱ እንዲጨምር
+
+            let statusText = "በሰዓቱ ገብቷል";
+            if(status === 'Absent') statusText = "ቀርቷል";
+            if(status === 'Late') statusText = `አርፍዷል (${mins || 0} ደቂቃ)`;
+
+            // 1. መጀመሪያ ለወላጅና ለአድሚኑ በዋናው የተማሪ ሰነድ (Document) ላይ የዛሬውን መረጃ መተካት
+            db.collection("students").doc(id).get().then(doc => {
+                let history = doc.data().attendanceHistory || [];
+                
+                // ለታሪክ እንዲቀመጥ አዲሱን ጥቅል መረጃ ወደ ታሪክ (History) እንጨምረዋለን
+                history.push({
+                    date: selectedDate,
+                    status: statusText,
+                    behavior: behavior,
+                    academic: academic,
+                    score: score || "---"
+                });
+
+                return db.collection("students").doc(id).update({
+                    lastAttendance: statusText,
+                    attendanceDate: selectedDate,
+                    examScore: score || "---",
+                    behaviorStatus: behavior,
+                    academicStatus: academic,
+                    attendanceHistory: history
+                });
+            }).then(() => {
+                // 2. ለአድሚኑ ጥቅል ሪፖርት ማሳያ (attendance) ማዕከል ላይ መረጃውን መጣል
+                return db.collection("attendance").add({
+                    studentName: studentName,
+                    status: status,
+                    minutes: mins || "",
+                    date: selectedDate,
+                    behavior: behavior,
+                    academic: academic,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            }).then(() => {
+                alert(`የ ${studentName} መረጃ በተሳካ ሁኔታ ተመዝግቧል! ወላጅ ገጽ፣ አድሚን ገጽ እና እዚህ ገጽ ላይ በቅጽበት ተዘምኗል።`);
+            }).catch(err => alert("ስህተት ተፈጥሯል፦ " + err.message));
+        }
+    </script>
+</body>
+</html>
