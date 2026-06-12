@@ -9,86 +9,169 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 </head>
-<body class="bg-slate-50 font-sans pb-10">
+<body class="bg-slate-50 font-sans pb-10 text-gray-800">
 
-    <div class="bg-[#0d7a70] p-8 rounded-b-[50px] text-white text-center shadow-2xl">
-        <h1 class="text-xl font-black italic text-yellow-400 mb-4">የወላጅ መረጃ ማዕከል</h1>
-        <div class="max-w-sm mx-auto">
-            <input type="tel" id="pIn" placeholder="ስልክ ቁጥርዎን ያስገቡ..." class="w-full p-4 rounded-3xl text-gray-800 text-center font-bold outline-none shadow-xl border-none">
-            <button onclick="fetchData()" class="w-full mt-3 bg-indigo-600 p-4 rounded-3xl font-black shadow-lg italic text-white">መረጃ አሳይ</button>
+    <div class="bg-[#0d7a70] p-10 rounded-b-[50px] text-white text-center shadow-2xl">
+        <div class="flex justify-between items-center max-w-sm mx-auto mb-2">
+            <a href="index.html" class="text-xs bg-black/20 px-3 py-2 rounded-xl font-bold text-white shadow-sm"><i class="fas fa-home"></i> ዋና ገጽ</a>
+            <h1 class="text-xl font-black italic text-yellow-400">የወላጅ ገጽ</h1>
+            <div class="w-10"></div>
+        </div>
+        <div class="max-w-sm mx-auto mt-6">
+            <input type="tel" id="pIn" placeholder="ስልክዎን ያስገቡ..." class="w-full p-4 rounded-3xl text-gray-800 text-center font-bold outline-none shadow-xl border-none">
+            <button onclick="fetchData()" class="w-full mt-3 bg-indigo-600 p-4 rounded-3xl font-black shadow-lg italic text-white">መረጃ ፈልግ</button>
         </div>
     </div>
 
-    <div id="results" class="p-4 max-w-4xl mx-auto mt-4"></div>
+    <div id="results" class="p-4 max-w-4xl mx-auto space-y-6"></div>
 
     <script>
-        const firebaseConfig = { apiKey: "AIzaSyBKw3ektgxdfvqcO-JHzJwjvfSkc-K_41A", authDomain: "safe-school-b3f87.firebaseapp.com", projectId: "safe-school-b3f87", storageBucket: "safe-school-b3f87.firebasestorage.app", messagingSenderId: "43051328645", appId: "1:43051328645:web:2664448d0b43a293daf5ec" };
+        // የፋየርቤዝ ማረጋገጫ (Firebase Configuration)
+        const firebaseConfig = { 
+            apiKey: "AIzaSyBKw3ektgxdfvqcO-JHzJwjvfSkc-K_41A", 
+            authDomain: "safe-school-b3f87.firebaseapp.com", 
+            projectId: "safe-school-b3f87", 
+            storageBucket: "safe-school-b3f87.firebasestorage.app", 
+            messagingSenderId: "43051328645", 
+            appId: "1:43051328645:web:2664448d0b43a293daf5ec" 
+        };
+        
+        // ፋየርቤዝን ማስጀመር
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
+        
+        const amharicMonths = ["መስከረም", "ጥቅምት", "ኅዳር", "ታኅሣሥ", "ጥር", "የካቲት", "መጋቢት", "ሚያዝያ", "ግንቦት", "ሰኔ", "ሐምሌ", "ነሐሴ"];
+        let currentStudentHistory = []; // የተማሪውን ታሪክ መረጃ ለመያዝ
 
         function fetchData() {
             const phone = document.getElementById('pIn').value.trim();
-            db.collection("students").where("parentPhone", "==", phone).onSnapshot(snap => {
-                const res = document.getElementById('results');
+            if(!phone) return alert("እባክዎ መጀመሪያ ስልክ ቁጥር ያስገቡ");
+
+            const res = document.getElementById('results');
+            res.innerHTML = `<p class="text-center text-sm font-bold text-gray-500 italic py-10"><i class="fas fa-spinner fa-spin mr-2"></i> መረጃ በመፈለግ ላይ ነው...</p>`;
+
+            // በትክክለኛው የዕይታ ስልት (Compat Syntax) መረጃን በቅጽበት መሳብ
+            db.collection("students").where("parentPhone", "==", phone).onSnapshot((snap) => {
                 res.innerHTML = "";
-                snap.forEach(d => {
-                    const data = d.data();
-                    const history = data.attendanceHistory || [];
+                
+                if(snap.empty) { 
+                    res.innerHTML = `<p class="text-center text-sm font-bold text-gray-400 italic py-10">❌ ተማሪ አልተገኘም! እባክዎ በትክክል መመዝገብዎን ያረጋግጡ።</p>`; 
+                    return; 
+                }
+
+                snap.forEach(doc => {
+                    const data = doc.data();
+                    const docId = doc.id;
+                    currentStudentHistory = data.attendanceHistory || [];
                     
-                    res.innerHTML = `
-                        <div class="bg-white rounded-[35px] shadow-lg p-6 border">
-                            <h2 class="text-xl font-black text-[#0d7a70] mb-4 italic">ተማሪ፦ ${data.studentName}</h2>
+                    const teacherName = data.teacherName || "ያልተመደበ";
+                    const teacherPhone = data.teacherPhone || "---";
+                    const paidMonthsList = data.paidMonths || [];
+                    const generalPayment = data.paymentStatus === 'paid' ? '<span class="text-emerald-600 font-black">🟢 የተከፈለ</span>' : '<span class="text-rose-500 font-black">❌ ያልተከፈለ</span>';
+
+                    res.innerHTML += `
+                        <div class="bg-white rounded-[35px] shadow-lg p-6 border mb-6">
+                            <h2 class="text-xl font-black text-[#0d7a70] border-b pb-2 mb-4 italic"><i class="fas fa-child mr-1"></i> ተማሪ፦ ${data.studentName}</h2>
                             
-                            <!-- 🏛️ የአድሚን መረጃ ክፍል -->
-                            <div class="mb-6 p-4 bg-sky-50 rounded-2xl border border-sky-100">
-                                <h3 class="text-[11px] font-black text-sky-800 uppercase italic mb-2">🏛️ የአድሚን አስተዳደራዊ መረጃ</h3>
-                                <div class="flex justify-between items-center text-sm">
-                                    <span class="font-bold text-gray-600">የክፍያ ሁኔታ፦</span>
-                                    <span class="${data.paymentStatus === 'paid' ? 'text-emerald-600' : 'text-rose-600'} font-black">${data.paymentStatus === 'paid' ? 'ተከፍሏል' : 'አልተከፈለም'}</span>
+                            <div class="mb-6 p-4 bg-sky-50 rounded-2xl border border-sky-100 text-left space-y-2">
+                                <h3 class="text-[11px] font-black text-sky-800 uppercase italic"><i class="fas fa-university mr-1"></i> 🏛️ የአድሚን/የአስተዳደር መረጃ ማዕከል</h3>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs pt-1">
+                                    <p class="font-bold text-gray-600">👤 ክፍል መምህር፦ <span class="text-gray-800 font-black">${teacherName}</span></p>
+                                    <p class="font-bold text-gray-600">📞 የመምህር ስልክ፦ <span class="text-gray-800 font-black">${teacherPhone}</span></p>
+                                </div>
+                                <div class="pt-2 border-t border-sky-200/60 flex justify-between items-center">
+                                    <button onclick="document.getElementById('pm_${docId}').classList.toggle('hidden')" class="bg-sky-600 text-white px-3 py-1.5 rounded-xl font-black text-[10px] flex items-center gap-1 shadow-sm hover:bg-sky-700">
+                                        <i class="fas fa-wallet"></i> የወርሃዊ ክፍያ ዝርዝር ማሳያ
+                                    </button>
+                                    <div class="text-xs">${generalPayment}</div>
+                                </div>
+                                <div id="pm_${docId}" class="hidden grid grid-cols-3 gap-1.5 p-2 bg-white rounded-xl border mt-2">
+                                    ${amharicMonths.map(m => `
+                                        <div class="p-1.5 rounded-lg border text-center text-[9px] ${data.paymentStatus === 'paid' || paidMonthsList.includes(m) ? 'bg-emerald-500 text-white font-bold' : 'bg-gray-100 text-gray-300'}">
+                                            ${m}
+                                        </div>
+                                    `).join('')}
                                 </div>
                             </div>
 
-                            <!-- 👨‍🏫 የመምህር መረጃ ክፍል (ሪፖርት) -->
-                            <div class="mb-4">
-                                <div class="flex justify-between items-center mb-2">
-                                    <h3 class="text-[11px] font-black text-indigo-800 uppercase italic">👨‍🏫 የመምህር አካዳሚክ ሪፖርት</h3>
-                                    <select id="parent-filter" onchange="renderReports(${JSON.stringify(history).replace(/"/g, '&quot;')})" class="text-[10px] p-1 border rounded-lg font-bold">
-                                        <option value="today">📅 የዛሬ</option>
-                                        <option value="month">🗓️ የዚህ ወር</option>
-                                        <option value="year">⏳ የዚህ ዓመት</option>
+                            <div class="space-y-3">
+                                <div class="flex justify-between items-center border-b pb-1">
+                                    <h3 class="text-[11px] font-black text-indigo-800 uppercase italic"><i class="fas fa-chart-line mr-1"></i> 👨‍🏫 የመምህሩ የክትትልና የውጤት ሪፖርት</h3>
+                                    <select id="parent-filter" onchange="renderReports()" class="text-[10px] p-1.5 border rounded-xl font-bold bg-gray-50 outline-none">
+                                        <option value="today">📅 የዛሬ ዕለታዊ ሪፖርት</option>
+                                        <option value="month">🗓️ የዚህ ወር ወርሃዊ ሪፖርት</option>
+                                        <option value="year">⏳ የዚህ ዓመት ዓመታዊ ሪፖርት</option>
                                     </select>
                                 </div>
-                                <div id="report-view" class="grid grid-cols-2 gap-3"></div>
+                                
+                                <div id="report-view" class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1"></div>
+                            </div>
+
+                        </div>`;
+                });
+                // የመጀመሪያውን ሪፖርት በራስ-ሰር እንዲያሳይ መጥራት
+                renderReports();
+            }, (error) => {
+                res.innerHTML = `<p class="text-center text-sm font-bold text-rose-600 italic py-10">❌ የዳታቤዝ ግንኙነት ስህተት፦ ${error.message}</p>`;
+            });
+        }
+
+        function renderReports() {
+            const filter = document.getElementById('parent-filter')?.value || 'today';
+            const container = document.getElementById('report-view');
+            if(!container) return;
+            
+            container.innerHTML = "";
+            const todayStr = new Date().toLocaleDateString('en-CA');
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const currentMonth = now.getMonth();
+
+            // የታሪክ ዳታዎችን ማጣራት
+            const filtered = currentStudentHistory.filter(h => {
+                const recDate = new Date(h.date);
+                if (isNaN(recDate.getTime())) return false;
+
+                if (filter === 'today') return h.date === todayStr;
+                if (filter === 'month') return recDate.getFullYear() === currentYear && recDate.getMonth() === currentMonth;
+                if (filter === 'year') return recDate.getFullYear() === currentYear;
+                return false;
+            });
+
+            if(filtered.length === 0) {
+                container.innerHTML = `<p class="col-span-full text-center text-xs text-gray-400 italic py-4">⚠️ በዚህ የማጣሪያ ጊዜ የተመዘገበ መረጃ የለም።</p>`;
+                return;
+            }
+
+            // መረጃዎችን ከአዲሱ ወደ ድሮው መደርደር
+            filtered.slice().reverse().forEach(h => {
+                let badgeColor = "bg-emerald-50 text-emerald-800 border-emerald-200";
+                if(h.status.includes("አርፍዷል")) badgeColor = "bg-amber-50 text-amber-800 border-amber-200";
+                if(h.status.includes("ቀርቷል")) badgeColor = "bg-rose-50 text-rose-800 border-rose-200";
+
+                container.innerHTML += `
+                    <div class="p-3.5 border rounded-2xl bg-white text-left space-y-2 shadow-sm border-gray-100">
+                        <div class="flex justify-between items-center">
+                            <span class="text-[10px] text-gray-400 font-bold"><i class="far fa-calendar-alt mr-1"></i> ${h.date}</span>
+                            <span class="text-[10px] font-black px-2 py-0.5 rounded-full border ${badgeColor}">${h.status}</span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-1.5 text-[10px] bg-slate-50 p-2 rounded-xl border border-gray-100 font-bold text-center">
+                            <div>
+                                <p class="text-gray-400 text-[9px]">ባህሪ/ፀባይ</p>
+                                <span class="text-emerald-600">${h.behavior || '---'}</span>
+                            </div>
+                            <div>
+                                <p class="text-gray-400 text-[9px]">ትምህርት ክትትል</p>
+                                <span class="text-amber-600">${h.academic || '---'}</span>
+                            </div>
+                            <div>
+                                <p class="text-gray-400 text-[9px]">ፈተና ውጤት</p>
+                                <span class="text-blue-600 text-[11px] font-black">${h.score || '---'}</span>
                             </div>
                         </div>
-                    `;
-                    renderReports(history);
-                });
+                    </div>`;
             });
         }
-
-        function renderReports(history) {
-            const filter = document.getElementById('parent-filter')?.value || 'today';
-            const today = new Date().toLocaleDateString('en-CA');
-            const now = new Date();
-            
-            const filtered = history.filter(h => {
-                const hDate = new Date(h.date);
-                if(filter === 'today') return h.date === today;
-                if(filter === 'month') return hDate.getMonth() === now.getMonth() && hDate.getFullYear() === now.getFullYear();
-                return hDate.getFullYear() === now.getFullYear();
-            });
-
-            const container = document.getElementById('report-view');
-            container.innerHTML = filtered.length ? filtered.map(h => `
-                <div class="bg-gray-50 p-3 rounded-2xl text-[11px] border">
-                    <p class="font-bold text-gray-500">${h.date}</p>
-                    <p class="font-black text-indigo-900">${h.status}</p>
-                    <p class="text-[10px] mt-1 italic">ፀባይ፦ <span class="text-emerald-600">${h.behavior}</span> | ውጤት፦ <span class="text-blue-600">${h.score}</span></p>
-                </div>
-            `).join('') : '<p class="text-xs text-gray-400 italic">መረጃ አልተመዘገበም</p>';
-        }
-    </script>
+    </script> 
 </body>
 </html>
-
