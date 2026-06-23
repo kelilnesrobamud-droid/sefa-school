@@ -1,1 +1,571 @@
 
+<!DOCTYPE html>
+<html lang="am">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Safe School - Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link class="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+</head>
+<body class="bg-slate-100 min-h-screen font-sans pb-20 text-gray-800">
+
+    <header class="bg-[#0d7a70] text-white p-6 rounded-b-[40px] shadow-2xl text-center">
+        <div class="flex justify-between items-center max-w-7xl mx-auto">
+            <a href="index.html" class="bg-black/20 px-4 py-2 rounded-xl text-xs font-bold hover:bg-black/40"><i class="fas fa-home"></i> ዋና ገጽ</a>
+            <h1 class="text-xl font-black italic text-yellow-300">የአድሚን ማስተዳደሪያ ማዕከል</h1>
+            <div class="w-10"></div>
+        </div>
+    </header>
+
+    <div class="max-w-7xl mx-auto p-4 grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
+        <button onclick="toggleAdminSection('register')" class="bg-emerald-600 text-white p-4 rounded-2xl font-black text-xs shadow-md hover:bg-emerald-700 active:scale-95 transition-all"><i class="fas fa-user-plus mr-2"></i> ➕ አዲስ ተማሪ/መምህር መመዝገቢያ</button>
+        <button onclick="toggleAdminSection('teachers')" class="bg-indigo-900 text-white p-4 rounded-2xl font-black text-xs shadow-md hover:bg-indigo-950 active:scale-95 transition-all"><i class="fas fa-chalkboard-teacher mr-2"></i> 👨‍🏫 የአስተማሪዎች ዝርዝር ማሳያ</button>
+        <button onclick="toggleAdminSection('students')" class="bg-slate-800 text-white p-4 rounded-2xl font-black text-xs shadow-md hover:bg-slate-900 active:scale-95 transition-all"><i class="fas fa-users mr-2"></i> 📋 የተማሪዎች አጠቃላይ ሰንጠረዥ</button>
+    </div>
+
+    <main class="max-w-7xl mx-auto p-4 mt-2">
+        
+        <div id="sec-register" class="hidden bg-white p-6 rounded-[30px] shadow-lg border max-w-md mx-auto space-y-4">
+            <h3 class="font-black text-gray-800 text-xs italic border-b pb-2 text-[#0d7a70]">✍️ አዲስ ተማሪ እና መምህር መመዝገቢያ ሳጥን</h3>
+            <div class="space-y-3 text-xs">
+                <div><label class="block text-[10px] text-gray-400 font-bold mb-1">የተማሪ ሙሉ ስም</label><input type="text" id="sName" placeholder="የተማሪ ስም..." class="w-full p-2.5 border rounded-xl font-bold bg-gray-50 outline-none"></div>
+                <div><label class="block text-[10px] text-gray-400 font-bold mb-1">የወላጅ ስልክ ቁጥር</label><input type="tel" id="pPhone" placeholder="09..." class="w-full p-2.5 border rounded-xl font-bold bg-gray-50 outline-none"></div>
+                <div class="border-t pt-2 my-2"></div>
+                <div><label class="block text-[10px] text-gray-400 font-bold mb-1">የክፍል መምህር ስም</label><input type="text" id="tName" placeholder="የመምህር ስም..." class="w-full p-2.5 border rounded-xl font-bold bg-gray-50 outline-none"></div>
+                <div><label class="block text-[10px] text-gray-400 font-bold mb-1">የመምህር ስልክ ቁጥር</label><input type="tel" id="tPhone" placeholder="09..." class="w-full p-2.5 border rounded-xl font-bold bg-gray-50 outline-none"></div>
+                <div><label class="block text-[10px] text-indigo-900 font-black mb-1">📂 የክፍል ምድብ (Section)</label><input type="text" id="tSection" placeholder="e.g. 5A" class="w-full p-2.5 border border-indigo-200 rounded-xl font-black bg-indigo-50/30 text-indigo-900 outline-none"></div>
+            </div>
+            <button onclick="registerStudent()" class="w-full bg-[#0d7a70] text-white py-3 rounded-xl font-black text-xs shadow hover:bg-[#0a6159]">መዝግብና መድብ</button>
+        </div>
+
+        <div id="sec-teachers" class="hidden bg-white p-6 rounded-[30px] shadow-lg border space-y-4">
+            <h3 class="font-black text-xs text-indigo-900 italic border-b pb-2">👨‍🏫 የተመዘገቡ መምህራን ዝርዝር (ለመክፈት ይጫኑ)</h3>
+            <div id="teachers-list-container" class="grid grid-cols-1 sm:grid-cols-3 gap-3"></div>
+            
+            <div id="teacher-students-only-box" class="hidden mt-4 p-4 bg-gray-50 rounded-2xl border border-gray-200 space-y-2">
+                <h4 id="teacher-students-title" class="font-black text-xs text-indigo-950 border-b pb-2">የመምህር ተማሪዎች ስም ዝርዝር</h4>
+                <div id="teacher-students-names-list" class="space-y-1.5"></div>
+            </div>
+        </div>
+
+        <div id="sec-students" class="hidden bg-white p-6 rounded-[30px] shadow-lg border space-y-4">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b pb-3">
+                <h3 class="font-black text-gray-800 text-xs italic flex items-center gap-2">
+                    <span>📋 የተማሪዎች አጠቃላይ መቆጣጠሪያ ሰንጠረዥ</span>
+                    <span id="total-badge" class="bg-indigo-100 text-indigo-800 text-[10px] px-2.5 py-0.5 rounded-full font-bold">0 ተማሪዎች</span>
+                </h3>
+                <div class="relative w-full sm:w-64">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 text-xs"><i class="fas fa-search"></i></span>
+                    <input type="text" id="adminSearchInput" oninput="filterAdminTable()" placeholder="የተማሪ ስም ይፈልጉ..." class="w-full pl-9 pr-4 py-1.5 bg-gray-50 border border-gray-300 rounded-xl font-bold text-xs text-gray-700 outline-none focus:border-indigo-500 focus:bg-white transition-all">
+                </div>
+            </div>
+
+            <div class="overflow-x-auto rounded-2xl border border-gray-200 shadow-sm">
+                <table class="w-full text-[11px] text-center border-collapse">
+                    <thead>
+                        <tr class="bg-slate-100 text-slate-700 font-black border-b">
+                            <th class="p-3 text-left">የተማሪ ስም / የወላጅ ስልክ</th>
+                            <th class="p-3">ክፍል</th>
+                            <th class="p-3">መምህር / ስልክ</th>
+                            <th class="p-3">💳 የክፍያ ሁኔታ</th>
+                            <th class="p-3 text-rose-600">⚠️ ማስተዳደሪያ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-table-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="payment-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-40">
+            <div class="bg-white rounded-[30px] w-full max-w-md p-6 shadow-2xl border space-y-4">
+                <div class="flex justify-between items-center border-b pb-3">
+                    <div>
+                        <h3 id="modal-student-name" class="font-black text-sm text-gray-800">የተማሪ ክፍያ ማስተዳደሪያ</h3>
+                        <p class="text-[10px] text-gray-400 font-bold mt-0.5">የ11 ወራት ዝርዝር መቆጣጠሪያ</p>
+                    </div>
+                    <button onclick="closePaymentModal()" class="w-8 h-8 bg-slate-100 hover:bg-rose-100 hover:text-rose-600 rounded-full flex items-center justify-center text-xs text-gray-500 transition-all"><i class="fas fa-times"></i></button>
+                </div>
+                <div id="modal-months-container" class="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto p-1"></div>
+            </div>
+        </div>
+
+        <div id="receipt-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
+            <div class="w-full max-w-md my-auto space-y-4">
+                
+                <div class="bg-white rounded-3xl p-6 shadow-2xl border-2 border-gray-300 relative overflow-hidden bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px]">
+                    
+                    <div class="absolute top-0 left-0 right-0 h-1 bg-repeat-x" style="background-image: linear-gradient(45deg, transparent 33.333%, #f1f5f9 33.333%, #f1f5f9 66.666%, transparent 66.666%), linear-gradient(-45deg, transparent 33.333%, #f1f5f9 33.333%, #f1f5f9 66.666%, transparent 66.666%); background-size: 12px 24px;"></div>
+                    
+                    <div class="text-center space-y-1 border-b-2 border-dashed border-gray-400 pb-3 mt-2">
+                        <h2 class="text-base font-black tracking-wider text-gray-900 italic">🏛️ SAFE SCHOOL RECEIPT</h2>
+                        <p class="text-[10px] bg-slate-100 text-gray-700 px-3 py-1 rounded-full font-black inline-block border my-1">
+                            ደረሰኝ ቁጥር (Receipt No): <span id="receipt-number-display" class="text-gray-950 font-black">---</span>
+                        </p>
+                        <p id="receipt-date-label" class="text-[9px] text-gray-400 font-medium"></p>
+                    </div>
+
+                    <div class="py-4 space-y-2.5 text-xs text-gray-800 font-bold">
+                        <div class="flex justify-between"><span class="text-gray-400">የተማሪ ስም:</span> <span id="receipt-student-display" class="text-gray-900">---</span></div>
+                        <div class="flex justify-between"><span class="text-gray-400">ለወር:</span> <span id="receipt-month-display" class="text-gray-900 bg-gray-100 px-2 py-0.5 rounded">---</span></div>
+                        
+                        <div class="grid grid-cols-2 gap-3 pt-2 border-t border-gray-100">
+                            <div>
+                                <label class="block text-[10px] text-gray-400 mb-1">የተከፈለ መጠን (ETB)</label>
+                                <input type="number" id="rAmount" placeholder="0.00" class="w-full p-2 border border-gray-300 rounded-xl bg-slate-50 text-center font-black text-gray-900 outline-none focus:bg-white focus:border-gray-800">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] text-gray-400 mb-1">ቀሪ እዳ (ETB)</label>
+                                <input type="number" id="rBalance" placeholder="0.00" class="w-full p-2 border border-gray-300 rounded-xl bg-slate-50 text-center font-black text-rose-600 outline-none focus:bg-white focus:border-gray-800">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3 pt-3 border-t-2 border-dashed border-gray-400">
+                        <div class="text-[9px] font-bold text-rose-600 text-center"><i class="fas fa-info-circle"></i> ደረሰኙን ለመቀየር ወይም ለማጥፋት አዲስ ፊርማ መፈረም ግዴታ ነው!</div>
+                        
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="bg-slate-50 p-2 rounded-xl border border-gray-200">
+                                <div class="flex justify-between text-[9px] text-gray-500 mb-1 font-black"><span>አድሚን ፊርማ</span> <button onclick="clearCanvas('adminCanvas')" class="text-blue-600">አጽዳ</button></div>
+                                <canvas id="adminCanvas" class="w-full h-16 bg-white border border-gray-300 rounded-lg cursor-crosshair"></canvas>
+                            </div>
+                            <div class="bg-slate-50 p-2 rounded-xl border border-gray-200">
+                                <div class="flex justify-between text-[9px] text-gray-500 mb-1 font-black"><span>ወላጅ/ከፋይ ፊርማ</span> <button onclick="clearCanvas('parentCanvas')" class="text-blue-600">አጽዳ</button></div>
+                                <canvas id="parentCanvas" class="w-full h-16 bg-white border border-gray-300 rounded-lg cursor-crosshair"></canvas>
+                            </div>
+                        </div>
+
+                        <div id="existing-signatures" class="hidden grid grid-cols-2 gap-2 p-2 bg-gray-50 rounded-xl text-center border">
+                            <div>
+                                <span class="text-[8px] text-gray-400 block font-bold">የቀድሞ አድሚን ፊርማ</span>
+                                <img id="oldAdminSig" class="h-8 mx-auto object-contain">
+                            </div>
+                            <div>
+                                <span class="text-[8px] text-gray-400 block font-bold">የቀድሞ ወላጅ ፊርማ</span>
+                                <img id="oldParentSig" class="h-8 mx-auto object-contain">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex gap-2">
+                    <button onclick="saveReceiptData()" class="flex-1 bg-slate-900 text-white py-3 rounded-2xl font-black text-xs shadow-lg hover:bg-black transition-all active:scale-95 text-center"><i class="fas fa-check-circle mr-1"></i> ደረሰኝ አረጋግጥና መዝግብ</button>
+                    <button id="deleteReceiptBtn" onclick="deleteReceiptData()" class="hidden bg-rose-600 hover:bg-rose-700 text-white px-4 py-3 rounded-2xl font-black text-xs shadow transition-all active:scale-95"><i class="fas fa-trash-alt"></i></button>
+                    <button onclick="closeReceiptModal()" class="bg-white text-gray-700 border px-4 py-3 rounded-2xl font-black text-xs shadow transition-all active:scale-95">ዝጋ</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="sec-history" class="hidden bg-white p-6 rounded-[30px] shadow-lg border space-y-3 mt-6">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="font-black text-xs text-[#0d7a70] italic" id="history-title">የተማሪ ዝርዝር መዝገብ</h3>
+                <button onclick="document.getElementById('sec-history').classList.add('hidden')" class="text-rose-600 font-bold text-xs"><i class="fas fa-times"></i> ዝጋ</button>
+            </div>
+
+            <div class="flex gap-2 border-b pb-1 text-xs font-black">
+                <button onclick="switchAdminTab('daily')" id="tab-daily" class="px-4 py-2 bg-indigo-900 text-white rounded-t-xl shadow-sm">📅 ዕለታዊ ሪፖርት</button>
+                <button onclick="switchAdminTab('monthly')" id="tab-monthly" class="px-4 py-2 bg-gray-200 text-gray-600 rounded-t-xl hover:bg-gray-300">📆 ወርሃዊ ማጠቃለያ</button>
+                <button onclick="switchAdminTab('yearly')" id="tab-yearly" class="px-4 py-2 bg-gray-200 text-gray-600 rounded-t-xl hover:bg-gray-300">🏛️ አመታዊ መዝገብ</button>
+            </div>
+
+            <div class="overflow-x-auto rounded-2xl border border-gray-300 shadow">
+                <table class="w-full text-[11px] text-center border-collapse">
+                    <thead>
+                        <tr class="bg-indigo-900 text-white font-bold border-b border-gray-300">
+                            <th class="p-2 border-r border-gray-300">📅 ቀን</th>
+                            <th class="p-2 border-r border-gray-300">⏱️ ክትትል</th>
+                            <th class="p-2 border-r border-gray-300">💯 ውጤት</th>
+                            <th class="p-2 border-r border-gray-300">🌟 ፀባይ</th>
+                            <th class="p-2 border-r border-gray-300">📈 ትምህርት</th>
+                            <th class="p-2 border-r border-gray-300">💬 መምህር አስተያየት</th>
+                            <th class="p-2 border-r border-gray-300">✍️ መምህር ፊርማ</th>
+                            <th class="p-2 border-r border-gray-300 bg-emerald-950 text-emerald-300">👪 ወላጅ አስተያየት</th>
+                            <th class="p-2 bg-emerald-900 text-emerald-200">✍️ ወላጅ ፊርማ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-table-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const firebaseConfig = { apiKey: "AIzaSyBKw3ektgxdfvqcO-JHzJwjvfSkc-K_41A", authDomain: "safe-school-b3f87.firebaseapp.com", projectId: "safe-school-b3f87", storageBucket: "safe-school-b3f87.firebasestorage.app", messagingSenderId: "43051328645", appId: "1:43051328645:web:2664448d0b43a293daf5ec" };
+        firebase.initializeApp(firebaseConfig); const db = firebase.firestore();
+        
+        let allStudents = [];
+        let activeStudentHistory = [];
+        let lastSelectedStudentId = ""; 
+        let currentModalStudentId = ""; 
+        let selectedMonthName = "";
+        let globalReceiptId = ""; // 👈 ቁጥሩን ቋሚ አድርጎ ለመያዝ የተጨመረ
+
+        const monthsList = ["መስከረም", "ጥቅምት", "ህዳር", "ታህሳስ", "ጥር", "የካቲት", "መጋቢት", "ሚያዝያ", "ግንቦት", "ሰኔ", "ሐምሌ"];
+
+        function toggleAdminSection(sectionId) {
+            const target = document.getElementById(`sec-${sectionId}`);
+            const isAlreadyOpen = !target.classList.contains('hidden');
+
+            document.getElementById('sec-register').classList.add('hidden');
+            document.getElementById('sec-teachers').classList.add('hidden');
+            document.getElementById('sec-students').classList.add('hidden');
+            document.getElementById('teacher-students-only-box').classList.add('hidden');
+            document.getElementById('sec-history').classList.add('hidden');
+            closePaymentModal();
+            closeReceiptModal();
+
+            if (!isAlreadyOpen) {
+                target.classList.remove('hidden');
+                if(sectionId === 'students') {
+                    document.getElementById('adminSearchInput').value = "";
+                    renderAdminTable(allStudents);
+                }
+            }
+        }
+
+        function registerStudent() {
+            const studentName = document.getElementById('sName').value.trim(); const parentPhone = document.getElementById('pPhone').value.trim();
+            const teacherName = document.getElementById('tName').value.trim(); const teacherPhone = document.getElementById('tPhone').value.trim();
+            const section = document.getElementById('tSection').value.trim().toUpperCase();
+            if(!studentName || !parentPhone || !teacherName || !teacherPhone || !section) return alert("ሁሉንም ይሙሉ!");
+
+            const initialPayments = {};
+            monthsList.forEach(m => initialPayments[m] = "unpaid");
+
+            db.collection("students").add({ studentName, parentPhone, teacherName, teacherPhone, section, payments: initialPayments, receipts: {}, attendanceHistory: [] }).then(() => { alert("ተማሪው በሰላም ተመዝግቧል!"); });
+        }
+
+        db.collection("students").onSnapshot((snap) => {
+            allStudents = [];
+            snap.forEach(doc => { allStudents.push({ id: doc.id, ...doc.data() }); });
+            
+            const searchVal = document.getElementById('adminSearchInput').value.trim().toLowerCase();
+            if(!searchVal) { renderAdminTable(allStudents); } else { filterAdminTable(); }
+            renderTeachersList(); 
+
+            if(currentModalStudentId) { openPaymentModal(currentModalStudentId); }
+        });
+
+        function renderAdminTable(studentsList) {
+            const tbody = document.getElementById('admin-table-body'); if(!tbody) return;
+            tbody.innerHTML = "";
+            document.getElementById('total-badge').innerText = `${studentsList.length} ተማሪዎች`;
+            
+            studentsList.forEach(data => {
+                tbody.innerHTML += `
+                    <tr class="border-b border-gray-200 hover:bg-slate-50 font-bold text-gray-700">
+                        <td class="p-3 text-left cursor-pointer" onclick="toggleStudentHistory('${data.id}')">
+                            <span class="text-blue-600 font-black text-xs block hover:underline">👤 ${data.studentName}</span>
+                            <span class="text-[9px] text-gray-400 font-medium">ወላጅ፦ ${data.parentPhone}</span>
+                        </td>
+                        <td class="p-3 font-black text-indigo-900">${data.section || '5A'}</td>
+                        <td class="p-3 text-gray-600">
+                            <span class="block">${data.teacherName}</span>
+                            <span class="text-[9px] text-gray-400">${data.teacherPhone}</span>
+                        </td>
+                        <td class="p-3">
+                            <button onclick="openPaymentModal('${data.id}')" class="bg-slate-800 text-white font-black px-3 py-1.5 rounded-xl text-[10px] hover:bg-black transition-all active:scale-95">
+                                <i class="fas fa-receipt mr-1"></i> የ11 ወራት ደረሰኝ
+                            </button>
+                        </td>
+                        <td class="p-3">
+                            <button onclick="deleteStudentFully('${data.id}', '${data.studentName}')" class="text-rose-500 hover:text-rose-700 p-2 text-xs transition-all active:scale-90" title="ተማሪውን ሙሉ በሙሉ ሰርዝ">
+                                <i class="fas fa-trash-alt"></i> ሰርዝ
+                            </button>
+                        </td>
+                    </tr>`;
+            });
+        }
+
+        function deleteStudentFully(studentId, studentName) {
+            const confirm1 = confirm(`⚠️ አስጠነቅቃለሁ! "${studentName}" የተባለውን ተማሪ ሙሉ በሙሉ ከነታሪኩ ማጥፋት ይፈልጋሉ?`);
+            if(!confirm1) return;
+
+            const finalCheck = prompt(`ይህንን ድርጊት ለማጽደቅ እባክዎ 'yes' ብለው ይፃፉ፡`);
+            if(finalCheck !== 'yes' && finalCheck !== 'YES') {
+                return alert("የማረጋገጫ ቃሉ ትክክል ስላልሆነ ተማሪው አልጠፋም።");
+            }
+
+            db.collection("students").doc(studentId).delete().then(() => {
+                alert(`"${studentName}" ከሲስተሙ ላይ ሙሉ በሙሉ ተሰርዟል።`);
+            });
+        }
+
+        function openPaymentModal(studentId) {
+            currentModalStudentId = studentId;
+            const student = allStudents.find(s => s.id === studentId);
+            if(!student) return;
+
+            document.getElementById('modal-student-name').innerText = `👤 የ${student.studentName} ክፍያ ሁኔታ`;
+            const container = document.getElementById('modal-months-container');
+            container.innerHTML = "";
+
+            const studentPayments = student.payments || {};
+
+            monthsList.forEach(month => {
+                const status = studentPayments[month] === "paid";
+                
+                const bgClass = status ? "bg-zinc-900 text-white border border-black shadow" : "bg-white text-gray-400 border border-gray-200";
+                const icon = status ? "fa-file-invoice-dollar" : "fa-times-circle";
+                const label = status ? "🧾 ደረሰኝ ወጥቷል" : "ያልተከፈለ";
+
+                container.innerHTML += `
+                    <button onclick="handleMonthClick('${studentId}', '${month}')" class="p-3 rounded-2xl text-[11px] font-black transition-all active:scale-95 text-left flex flex-col justify-between shadow-sm h-16 ${bgClass}">
+                        <span class="block text-xs">${month}</span>
+                        <span class="text-[9px] font-bold flex items-center gap-1 opacity-90"><i class="fas ${icon}"></i> ${label}</span>
+                    </button>`;
+            });
+
+            document.getElementById('payment-modal').classList.remove('hidden');
+        }
+
+        function closePaymentModal() {
+            document.getElementById('payment-modal').classList.add('hidden');
+            currentModalStudentId = "";
+        }
+
+        // 🔒 ቁጥሩ እንዳይንቀሳቀስ ያደረግንበት ዋናው ፈንክሽን
+        function handleMonthClick(studentId, monthName) {
+            selectedMonthName = monthName;
+            const student = allStudents.find(s => s.id === studentId);
+            const receiptData = (student.receipts && student.receipts[monthName]) ? student.receipts[monthName] : null;
+
+            document.getElementById('receipt-student-display').innerText = student.studentName;
+            document.getElementById('receipt-month-display').innerText = monthName;
+            document.getElementById('receipt-date-label').innerText = receiptData ? `ቀን፦ ${receiptData.date}` : `ቀን፦ ${new Date().toLocaleDateString('am-ET')}`;
+
+            // 🔢 የደረሰኝ ቁጥር ህግ (የበፊቱ ካለ በጭራሽ አይንቀሳቀስም፣ አዲስ ከሆነ ግን ቋሚ ቁጥር ይፈጥራል)
+            if(receiptData && receiptData.receiptId) {
+                globalReceiptId = receiptData.receiptId; 
+            } else {
+                // መጀመሪያ ሲፈጠር ብቻ አንድ ጊዜ ቋሚ መታወቂያ ይሰጠዋል (ለምሳሌ፦ INV-10258)
+                const randomId = Math.floor(10000 + Math.random() * 90000);
+                globalReceiptId = `INV-${randomId}`;
+            }
+            document.getElementById('receipt-number-display').innerText = globalReceiptId;
+
+            document.getElementById('rAmount').value = receiptData ? receiptData.amount : "";
+            document.getElementById('rBalance').value = receiptData ? receiptData.balance : "";
+            
+            clearCanvas('adminCanvas');
+            clearCanvas('parentCanvas');
+
+            const existDiv = document.getElementById('existing-signatures');
+            const deleteBtn = document.getElementById('deleteReceiptBtn');
+
+            if(receiptData) {
+                document.getElementById('oldAdminSig').src = receiptData.adminSignature;
+                document.getElementById('oldParentSig').src = receiptData.parentSignature;
+                existDiv.classList.remove('hidden');
+                deleteBtn.classList.remove('hidden');
+            } else {
+                existDiv.classList.add('hidden');
+                deleteBtn.classList.add('hidden');
+            }
+
+            document.getElementById('receipt-modal').classList.remove('hidden');
+            setupSignatures();
+        }
+
+        function closeReceiptModal() {
+            document.getElementById('receipt-modal').classList.add('hidden');
+        }
+
+        function setupSignatures() {
+            setupCanvasDrawing('adminCanvas');
+            setupCanvasDrawing('parentCanvas');
+        }
+
+        function setupCanvasDrawing(canvasId) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = 64;
+
+            ctx.strokeStyle = "#111827";
+            ctx.lineWidth = 2;
+            ctx.lineCap = "round";
+
+            let drawing = false;
+
+            function getPos(e) {
+                const rect = canvas.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                return { x: clientX - rect.left, y: clientY - rect.top };
+            }
+
+            canvas.onmousedown = (e) => { drawing = true; ctx.beginPath(); const p = getPos(e); ctx.moveTo(p.x, p.y); };
+            canvas.onmousemove = (e) => { if(!drawing) return; e.preventDefault(); const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); };
+            canvas.onmouseup = () => { drawing = false; };
+
+            canvas.ontouchstart = (e) => { drawing = true; ctx.beginPath(); const p = getPos(e); ctx.moveTo(p.x, p.y); };
+            canvas.ontouchmove = (e) => { if(!drawing) return; e.preventDefault(); const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); };
+            canvas.ontouchend = () => { drawing = false; };
+        }
+
+        function clearCanvas(canvasId) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function isCanvasBlank(canvasId) {
+            const canvas = document.getElementById(canvasId);
+            const blank = document.createElement('canvas');
+            blank.width = canvas.width;
+            blank.height = canvas.height;
+            return canvas.toDataURL() === blank.toDataURL();
+        }
+
+        function saveReceiptData() {
+            const amount = document.getElementById('rAmount').value.trim();
+            const balance = document.getElementById('rBalance').value.trim();
+
+            if(!amount || !balance) return alert("እባክዎ የተከፈለውንና ቀሪውን መጠን በትክክል ያስገቡ!");
+            
+            if(isCanvasBlank('adminCanvas') || isCanvasBlank('parentCanvas')) {
+                return alert("⚠️ ደረሰኙን ለመመዝገብ/ለመቀየር የአድሚንም ሆነ የወላጅ አዲስ ፊርማ ማረፍ አለበት!");
+            }
+
+            const adminSigData = document.getElementById('adminCanvas').toDataURL();
+            const parentSigData = document.getElementById('parentCanvas').toDataURL();
+            const studentId = currentModalStudentId;
+            
+            db.collection("students").doc(studentId).update({
+                [`payments.${selectedMonthName}`]: "paid",
+                [`receipts.${selectedMonthName}`]: {
+                    receiptId: globalReceiptId, // 👈 ቁጥሩ ዳታቤዝ ውስጥ አብሮ ቋሚ ሆኖ ይቀመጣል
+                    amount: amount,
+                    balance: balance,
+                    adminSignature: adminSigData,
+                    parentSignature: parentSigData,
+                    date: new Date().toLocaleDateString('am-ET')
+                }
+            }).then(() => {
+                alert("ደረሰኙ በስኬት ተመዝግቧል! ለወላጅም ተልኳል።");
+                closeReceiptModal();
+            });
+        }
+
+        function deleteReceiptData() {
+            if(isCanvasBlank('adminCanvas') || isCanvasBlank('parentCanvas')) {
+                return alert("⚠️ ይህንን ይፋዊ ደረሰኝ ሙሉ በሙሉ ለማጥፋት የግድ የወላጅና የአድሚን አዲስ ፊርማ ያስፈልጋል!");
+            }
+
+            if(!confirm("እርግጠኛ ነዎት ይህንን ደረሰኝ ማጥፋት ይፈልጋሉ? ክፍያውም ይሰረዛል።")) return;
+
+            const studentId = currentModalStudentId;
+            
+            db.collection("students").doc(studentId).update({
+                [`payments.${selectedMonthName}`]: "unpaid",
+                [`receipts.${selectedMonthName}`]: firebase.firestore.FieldValue.delete()
+            }).then(() => {
+                alert("ደረሰኙ ሙሉ በሙሉ ጠፍቷል።");
+                closeReceiptModal();
+            });
+        }
+
+        function filterAdminTable() {
+            const searchValue = document.getElementById('adminSearchInput').value.trim().toLowerCase();
+            const filteredStudents = allStudents.filter(student => student.studentName.toLowerCase().includes(searchValue));
+            renderAdminTable(filteredStudents);
+        }
+
+        function renderTeachersList() {
+            const container = document.getElementById('teachers-list-container'); if(!container) return;
+            container.innerHTML = "";
+            const uniqueTeachers = {};
+            allStudents.forEach(s => { if(s.teacherPhone) uniqueTeachers[s.teacherPhone] = { name: s.teacherName, section: s.section }; });
+
+            Object.keys(uniqueTeachers).forEach(phone => {
+                const t = uniqueTeachers[phone];
+                container.innerHTML += `
+                    <button onclick="showTeacherStudentsOnly('${phone}', '${t.name}')" class="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl font-black text-xs text-indigo-900 text-left hover:bg-indigo-100 flex justify-between items-center transition shadow-sm active:scale-95">
+                        <span>👨‍🏫 ${t.name} (${t.section})</span>
+                        <i class="fas fa-chevron-down text-indigo-400 text-[10px]"></i>
+                    </button>`;
+            });
+        }
+
+        function showTeacherStudentsOnly(phone, teacherName) {
+            const filtered = allStudents.filter(s => s.teacherPhone === phone);
+            const box = document.getElementById('teacher-students-only-box');
+            const listDiv = document.getElementById('teacher-students-names-list');
+            
+            document.getElementById('teacher-students-title').innerText = `👨‍🏫 የመምህር ${teacherName} ተማሪዎች (ስም ዝርዝር ብቻ)`;
+            listDiv.innerHTML = "";
+
+            filtered.forEach(student => {
+                listDiv.innerHTML += `
+                    <div onclick="toggleStudentHistory('${student.id}')" class="p-3 bg-white border rounded-xl font-black text-xs text-gray-700 cursor-pointer hover:bg-indigo-50 hover:text-indigo-600 transition flex justify-between items-center shadow-sm active:scale-98">
+                        <span><i class="fas fa-user-graduate text-slate-400 mr-2"></i> ${student.studentName}</span>
+                        <span class="text-[9px] bg-slate-100 px-2 py-0.5 rounded-md font-bold text-gray-400">ታሪክ እይ <i class="fas fa-eye"></i></span>
+                    </div>`;
+            });
+
+            box.classList.remove('hidden');
+            box.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function toggleStudentHistory(id) {
+            const historySec = document.getElementById('sec-history');
+            const isAlreadyOpen = !historySec.classList.contains('hidden');
+
+            if (isAlreadyOpen && lastSelectedStudentId === id) {
+                historySec.classList.add('hidden');
+                return;
+            }
+
+            const student = allStudents.find(s => s.id === id);
+            if(!student) return;
+
+            lastSelectedStudentId = id;
+            activeStudentHistory = student.attendanceHistory || [];
+            
+            historySec.classList.remove('hidden');
+            document.getElementById('history-title').innerText = `📊 የ${student.studentName} የሪፖርት ታሪክ መዝገብ`;
+            
+            switchAdminTab('daily'); 
+            historySec.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function switchAdminTab(type) {
+            const btnDaily = document.getElementById('tab-daily'); 
+            const btnMonthly = document.getElementById('tab-monthly'); 
+            const btnYearly = document.getElementById('tab-yearly'); 
+            const tbody = document.getElementById('history-table-body');
+
+            [btnDaily, btnMonthly, btnYearly].forEach(b => { b.className = "px-4 py-2 bg-gray-200 text-gray-600 rounded-t-xl hover:bg-gray-300 font-black text-xs"; });
+            document.getElementById(`tab-${type}`).className = "px-4 py-2 bg-indigo-900 text-white rounded-t-xl shadow-sm font-black text-xs";
+
+            if (type === 'daily') { renderDailyTable(); } 
+            else if (type === 'monthly') { tbody.innerHTML = `<tr><td colspan="9" class="p-6 text-gray-500 italic font-bold">📆 የወርሃዊ ማጠቃለያ መዝገብ ደህንነቱ የተጠበቀ ነው።</td></tr>`; } 
+            else if (type === 'yearly') { tbody.innerHTML = `<tr><td colspan="9" class="p-6 text-gray-500 italic font-bold">🏛️ የአመታዊ አጠቃላይ ውጤት መዝገብ በሰላም ተቀምጧል።</td></tr>`; }
+        }
+
+        function renderDailyTable() {
+            const tbody = document.getElementById('history-table-body'); tbody.innerHTML = "";
+            if(activeStudentHistory.length === 0) { tbody.innerHTML = `<tr><td colspan="9" class="p-3 text-gray-400 italic">ምንም ሪፖርት አልተመዘገበም</td></tr>`; return; }
+
+            activeStudentHistory.slice().reverse().forEach(h => {
+                tbody.innerHTML += `
+                    <tr class="border-b border-gray-300 text-gray-700 font-bold text-[10px]">
+                        <td class="p-2 border-r border-gray-300 bg-gray-50">${h.date}</td>
+                        <td class="p-2 border-r border-gray-300 text-indigo-700">${h.status}</td>
+                        <td class="p-2 border-r border-gray-300 text-blue-600 font-black">${h.score || '---'}</td>
+                        <td class="p-2 border-r border-gray-300 text-emerald-600">${h.behavior}</td>
+                        <td class="p-2 border-r border-gray-300 text-purple-600">${h.academic || '---'}</td>
+                        <td class="p-2 border-r border-gray-300 text-left italic">"${h.teacherComment}"</td>
+                        <td class="p-2 border-r border-gray-300">${h.teacherSig ? `<img src="${h.teacherSig}" class="h-6 mx-auto object-contain">` : '---'}</td>
+                        <td class="p-2 border-r border-gray-300 bg-emerald-50/10 italic">"${h.parentComment || '---'}"</td>
+                        <td class="p-2 bg-emerald-50/20">${h.parentSig ? `<img src="${h.parentSig}" class="h-6 mx-auto object-contain">` : '---'}</td>
+                    </tr>`;
+            });
+        }
+    </script>
+</body>
+</html>
