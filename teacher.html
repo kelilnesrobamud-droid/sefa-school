@@ -1,1 +1,222 @@
+<!DOCTYPE html>
+<html lang="am">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>የመምህራን መቆጣጠሪያ ማዕከል</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen font-sans pb-20 text-gray-800">
+
+    <header class="bg-indigo-900 text-white p-6 rounded-b-[40px] shadow-2xl text-center">
+        <div class="flex justify-between items-center max-w-5xl mx-auto">
+            <a href="index.html" class="bg-black/20 px-4 py-2 rounded-xl text-xs font-bold hover:bg-black/40"><i class="fas fa-home"></i> ዋና ገጽ</a>
+            <h1 class="text-xl font-black italic text-yellow-300">የመምህራን ፖርታል</h1>
+            <div class="w-10"></div>
+        </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto p-4 space-y-6">
+        
+        <div id="teacher-login" class="bg-white p-6 rounded-[35px] shadow-lg max-w-md mx-auto mt-10 border text-center">
+            <h2 class="text-base font-black mb-3 text-indigo-900 italic">በአስተማሪ ስልክ ቁጥር ይግቡ</h2>
+            <input type="tel" id="teacher-phone-input" placeholder="የአስተማሪ ስልክ ቁጥር..." class="w-full p-3 border rounded-2xl mb-4 text-center font-bold">
+            <button onclick="loginTeacher()" class="w-full bg-indigo-600 text-white py-3 rounded-2xl font-black italic text-xs">ይግቡ</button>
+        </div>
+
+        <div id="teacher-dashboard" class="hidden space-y-4">
+            <div class="bg-gradient-to-r from-indigo-800 to-slate-800 text-white p-5 rounded-[25px] shadow flex justify-between items-center">
+                <div>
+                    <h2 class="text-base font-black italic" id="display-teacher-name">መምህር፦ ---</h2>
+                    <button onclick="switchTeacherView('list')" class="mt-2 bg-yellow-400 text-slate-950 px-4 py-1.5 rounded-xl text-xs font-black shadow-sm"><i class="fas fa-users"></i> 👥 እኔ (የእኔ ተማሪዎች)</button>
+                </div>
+                <span class="text-xs font-bold bg-white/20 px-3 py-1 rounded-full" id="students-count-badge">0 ተማሪዎች</span>
+            </div>
+
+            <div id="teacher-list-section" class="bg-white p-4 rounded-[25px] shadow border space-y-3">
+                <h3 class="font-black text-gray-800 text-xs italic border-b pb-2">📋 የተማሪዎች ስም ዝርዝር (ለመሙላት ወይም ታሪክ ለማየት ስሙን ይጫኑ)</h3>
+                <div id="my-students-list" class="space-y-2"></div>
+            </div>
+
+            <div id="teacher-form-section" class="hidden bg-white p-6 rounded-[30px] shadow-lg border space-y-4">
+                <div class="flex justify-between items-center border-b pb-2">
+                    <h3 class="font-black text-xs text-emerald-700 italic" id="form-section-title">✍️ እለታዊ መረጃ መሙያ ሳጥን</h3>
+                    <button onclick="switchTeacherView('list')" class="bg-gray-200 text-gray-700 px-3 py-1 rounded-xl text-[10px] font-bold">ወደ ዝርዝር ተመለስ</button>
+                </div>
+                <div id="dynamic-form-container"></div>
+            </div>
+
+            <div id="teacher-history-section" class="hidden bg-white p-5 rounded-[25px] shadow border space-y-3">
+                <h3 class="font-black text-xs text-indigo-900 italic border-b pb-2" id="teacher-history-title">📊 የተማሪ መዝገብ ታሪክ ሰንጠረዥ</h3>
+                <div class="overflow-x-auto rounded-2xl border border-gray-300 shadow">
+                    <table class="w-full text-[11px] text-center border-collapse">
+                        <thead>
+                            <tr class="bg-indigo-900 text-white font-bold border-b border-gray-300">
+                                <th class="p-2 border-r border-gray-300">📅 ቀን</th>
+                                <th class="p-2 border-r border-gray-300">⏱️ ክትትል</th>
+                                <th class="p-2 border-r border-gray-300">💯 ውጤት</th>
+                                <th class="p-2 border-r border-gray-300">🌟 ፀባይ</th>
+                                <th class="p-2 border-r border-gray-300">📈 ትምህርት</th>
+                                <th class="p-2 border-r border-gray-300">💬 መምህር አስተያየት</th>
+                                <th class="p-2 border-r border-gray-300">✍️ መምህር ፊርማ</th>
+                                <th class="p-2 border-r border-gray-300 bg-emerald-950 text-emerald-300">👪 ወላጅ አስተያየት</th>
+                                <th class="p-2 bg-emerald-900 text-emerald-200">✍️ ወላጅ ፊርማ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="teacher-history-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="signature-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-[30px] p-6 w-full max-w-md text-center space-y-4">
+            <h3 class="font-black text-indigo-900 text-sm italic">✍ Ramos የአስተማሪ ፊርማ ሰሌዳ</h3>
+            <canvas id="sig-canvas" width="350" height="200" class="border-2 dashed bg-gray-50 w-full rounded-2xl shadow-inner cursor-crosshair"></canvas>
+            <div class="flex gap-2">
+                <button onclick="clearSignature()" class="w-1/2 bg-gray-200 py-2.5 rounded-xl font-bold text-xs">አጥፋ</button>
+                <button onclick="saveSignature()" class="w-1/2 bg-emerald-600 text-white py-2.5 rounded-xl font-black text-xs">ፊርማ አጽድቅ</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = { apiKey: "AIzaSyBKw3ektgxdfvqcO-JHzJwjvfSkc-K_41A", authDomain: "safe-school-b3f87.firebaseapp.com", projectId: "safe-school-b3f87", storageBucket: "safe-school-b3f87.firebasestorage.app", messagingSenderId: "43051328645", appId: "1:43051328645:web:2664448d0b43a293daf5ec" };
+        firebase.initializeApp(firebaseConfig); const db = firebase.firestore();
+        const todayDefault = new Date().toLocaleDateString('en-CA');
+        let activeStudentId = null; let canvas, ctx, drawing = false; let savedTeacherSignatureData = ""; let teacherStudents = [];
+
+        function switchTeacherView(view) {
+            if(view === 'list') {
+                document.getElementById('teacher-list-section').classList.remove('hidden');
+                document.getElementById('teacher-form-section').classList.add('hidden');
+                document.getElementById('teacher-history-section').classList.add('hidden');
+            } else if(view === 'form') {
+                document.getElementById('teacher-list-section').classList.add('hidden');
+                document.getElementById('teacher-form-section').classList.remove('hidden');
+                document.getElementById('teacher-history-section').classList.remove('hidden');
+            }
+        }
+
+        function loginTeacher() {
+            const phone = document.getElementById('teacher-phone-input').value.trim();
+            if(!phone) return alert("ስልክ ያስገቡ");
+
+            db.collection("students").where("teacherPhone", "==", phone).onSnapshot(snapshot => {
+                if(snapshot.empty) return alert("መምህሩ አልተገኘም!");
+                document.getElementById('teacher-login').classList.add('hidden');
+                document.getElementById('teacher-dashboard').classList.remove('hidden');
+                
+                teacherStudents = []; let tName = "";
+                const listDiv = document.getElementById('my-students-list'); listDiv.innerHTML = "";
+                document.getElementById('students-count-badge').innerText = `${snapshot.size} ተማሪዎች`;
+
+                snapshot.forEach(doc => {
+                    const data = doc.data(); tName = data.teacherName || "መምህር";
+                    teacherStudents.push({ id: doc.id, ...data });
+
+                    listDiv.innerHTML += `
+                        <button onclick="loadStudentWorkspace('${doc.id}')" class="w-full p-4 text-left font-black text-gray-700 text-sm bg-gray-50 rounded-2xl border hover:bg-indigo-50/50 flex justify-between items-center transition">
+                            <span><i class="fas fa-user-graduate text-indigo-600 mr-2"></i> ${data.studentName}</span>
+                            <span class="text-[10px] bg-indigo-100 text-indigo-700 px-3 py-1 rounded-xl">መረጃ ክፈት <i class="fas fa-arrow-right ml-1"></i></span>
+                        </button>`;
+                });
+                document.getElementById('display-teacher-name').innerText = `መምህር፦ ${tName}`;
+                switchTeacherView('list');
+            });
+        }
+
+        function loadStudentWorkspace(id) {
+            activeStudentId = id;
+            const student = teacherStudents.find(s => s.id === id);
+            document.getElementById('form-section-title').innerText = `✍️ የ${student.studentName} እለታዊ መረጃ መሙያ ሳጥን`;
+            
+            const formContainer = document.getElementById('dynamic-form-container');
+            formContainer.innerHTML = `
+                <div class="space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                        <div class="border-b pb-2"><label class="block font-bold mb-1 text-gray-400">📅 ቀን</label><input type="date" id="date_${id}" value="${todayDefault}" class="w-full p-2 border rounded-xl font-bold outline-none"></div>
+                        <div class="border-b pb-2"><label class="block font-bold mb-1 text-indigo-700">⏱️ የሰዓት ክትትል</label><select id="status_${id}" onchange="toggleMins('${id}')" class="w-full p-2 border rounded-xl font-bold outline-none"><option value="Present">🟢 በሰዓቱ</option><option value="Late">🟡 አርፍዷል</option><option value="Absent">🔴 ቀሪ</option></select><input type="number" id="mins_${id}" placeholder="ደቂቃ" class="hidden w-full mt-2 p-2 border rounded-xl text-center outline-none"></div>
+                        <div class="border-b pb-2"><label class="block font-bold mb-1 text-emerald-600">🌟 የፀባይ መስመር</label><select id="behavior_${id}" class="w-full p-2 border rounded-xl font-bold outline-none"><option value="ጥሩ">🌟 ጥሩ</option><option value="መካከለኛ">👍 መካከለኛ</option><option value="ዝቅተኛ">⚠️ ዝቅተኛ</option></select></div>
+                        <div class="border-b pb-2"><label class="block font-bold mb-1 text-purple-600">📈 የትምህርት ክትትል</label><select id="academic_${id}" class="w-full p-2 border rounded-xl font-bold outline-none"><option value="ጥሩ">⭐ ጥሩ</option><option value="መካከለኛ">📉 መካከለኛ</option><option value="ዝቅተኛ">❌ ዝቅተኛ</option></select></div>
+                    </div>
+                    <div class="border-b pb-2 text-xs"><label class="block font-bold mb-1 text-blue-600">💯 የፈተና ውጤት (%)</label><input type="text" id="score_${id}" placeholder="e.g. 95%" class="w-full p-2 border rounded-xl font-bold outline-none"></div>
+                    <div class="border-b pb-2 text-xs"><label class="block font-bold mb-1 text-gray-500">💬 የመምህር አስተያየት</label><textarea id="comment_${id}" rows="2" placeholder="አስተያየት እዚህ ይጻፉ..." class="w-full p-2 border rounded-xl text-xs font-medium outline-none"></textarea></div>
+                    
+                    <div class="flex items-center gap-3 bg-gray-50 p-3 rounded-xl border">
+                        <button type="button" onclick="openSignatureModal('${id}')" class="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-sm">ለመፈረም ይጫኑ</button>
+                        <div id="sig-preview-container_${id}" class="hidden border p-1 rounded bg-white"><img id="sig-img_${id}" src="" class="h-10 object-contain"></div>
+                    </div>
+                    <button onclick="saveStudentData('${id}')" class="w-full bg-[#0d7a70] text-white py-3 rounded-xl text-xs font-black shadow-md">መረጃውን አስቀምጥ</button>
+                </div>`;
+                
+            viewStudentHistoryInTeacher(id);
+            switchTeacherView('form');
+        }
+
+        function viewStudentHistoryInTeacher(id) {
+            const student = teacherStudents.find(s => s.id === id);
+            document.getElementById('teacher-history-title').innerText = `📊 የ${student.studentName} ዕለታዊ የሪፖርት መዝገብ ታሪክ`;
+
+            const tbody = document.getElementById('teacher-history-table-body'); tbody.innerHTML = "";
+            const history = student.attendanceHistory || [];
+
+            if(history.length === 0) { tbody.innerHTML = `<tr><td colspan="9" class="p-3 text-gray-400 italic">ምንም የድሮ ታሪክ የለም</td></tr>`; return; }
+
+            history.slice().reverse().forEach(h => {
+                tbody.innerHTML += `
+                    <tr class="border-b border-gray-300 text-gray-700 font-bold text-[10px]">
+                        <td class="p-2 border-r border-gray-300 bg-gray-50">${h.date}</td>
+                        <td class="p-2 border-r border-gray-300 text-indigo-700">${h.status}</td>
+                        <td class="p-2 border-r border-gray-300 text-blue-600 font-black">${h.score || '---'}</td>
+                        <td class="p-2 border-r border-gray-300 text-emerald-600">${h.behavior}</td>
+                        <td class="p-2 border-r border-gray-300 text-purple-600">${h.academic || '---'}</td>
+                        <td class="p-2 border-r border-gray-300 text-left italic">"${h.teacherComment}"</td>
+                        <td class="p-2 border-r border-gray-300">${h.teacherSig ? `<img src="${h.teacherSig}" class="h-6 mx-auto object-contain">` : '---'}</td>
+                        <td class="p-2 border-r border-gray-300 bg-emerald-50/10 italic">"${h.parentComment || '---'}"</td>
+                        <td class="p-2 bg-emerald-50/20">${h.parentSig ? `<img src="${h.parentSig}" class="h-6 mx-auto object-contain">` : '---'}</td>
+                    </tr>`;
+            });
+        }
+
+        function toggleMins(id) { document.getElementById(`mins_${id}`).classList.toggle('hidden', document.getElementById(`status_${id}`).value !== 'Late'); }
+
+        window.addEventListener("DOMContentLoaded", () => {
+            canvas = document.getElementById('sig-canvas'); ctx = canvas.getContext('2d'); ctx.strokeStyle = "#1e3a8a"; ctx.lineWidth = 3;
+            canvas.addEventListener("mousedown", (e)=>{ drawing=true; ctx.beginPath(); const r=canvas.getBoundingClientRect(); ctx.moveTo(e.clientX-r.left, e.clientY-r.top); });
+            canvas.addEventListener("mousemove", (e)=>{ if(!drawing) return; const r=canvas.getBoundingClientRect(); ctx.lineTo(e.clientX-r.left, e.clientY-r.top); ctx.stroke(); });
+            canvas.addEventListener("mouseup", ()=>drawing=false);
+        });
+
+        function openSignatureModal(id) { document.getElementById('signature-modal').classList.remove('hidden'); clearSignature(); }
+        function clearSignature() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
+        function saveSignature() {
+            savedTeacherSignatureData = canvas.toDataURL();
+            document.getElementById(`sig-img_${activeStudentId}`).src = savedTeacherSignatureData;
+            document.getElementById(`sig-preview-container_${activeStudentId}`).classList.remove('hidden');
+            document.getElementById('signature-modal').classList.add('hidden');
+        }
+
+        function saveStudentData(id) {
+            const date = document.getElementById(`date_${id}`).value; const status = document.getElementById(`status_${id}`).value;
+            const mins = document.getElementById(`mins_${id}`).value; const behavior = document.getElementById(`behavior_${id}`).value;
+            const academic = document.getElementById(`academic_${id}`).value; let score = document.getElementById(`score_${id}`).value.trim();
+            const comment = document.getElementById(`comment_${id}`).value.trim();
+            
+            if(!savedTeacherSignatureData) return alert("እባክዎ መጀመሪያ ይፈርሙ!");
+            let statusText = status==='Absent' ? 'ቀርቷል' : (status==='Late' ? `አርፍዷል (${mins || 0}ደ)` : 'በሰዓቱ ገብቷል');
+
+            db.collection("students").doc(id).get().then(doc => {
+                let history = doc.data().attendanceHistory || [];
+                history.push({ date, status: statusText, behavior, academic, score: score || "---", teacherComment: comment || "አስተያየት የለም", teacherSig: savedTeacherSignatureData, parentComment: "", parentSig: "" });
+                return db.collection("students").doc(id).update({ attendanceHistory: history });
+            }).then(() => { alert("መረጃው በሥርዓት ተቀምጧል!"); savedTeacherSignatureData=""; switchTeacherView('list'); });
+        }
+    </script>
+</body>
+</html>
 
