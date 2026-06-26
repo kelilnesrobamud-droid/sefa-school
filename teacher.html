@@ -1,1 +1,97 @@
+<!DOCTYPE html>
+<html lang="am">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Safe School - Teacher Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+</head>
+<body class="bg-slate-100 min-h-screen font-sans pb-20 text-gray-800">
+
+    <header class="bg-emerald-700 text-white p-6 rounded-b-[40px] shadow-2xl text-center">
+        <h1 class="text-xl font-black italic text-yellow-200">የመምህራን ማዕከል (Teacher)</h1>
+        <p class="text-xs mt-1 opacity-80">የዕለት ውሎ ሪፖርት መሙያ</p>
+    </header>
+
+    <main class="max-w-2xl mx-auto p-4 space-y-4">
+        <div class="bg-white p-6 rounded-[30px] shadow-lg border space-y-4">
+            <h3 class="font-black text-xs text-emerald-800 italic border-b pb-2">📝 የዛሬ የዕለት ውሎ መዝገብ</h3>
+            
+            <div class="space-y-3 text-xs font-bold">
+                <div>
+                    <label class="block text-gray-500 mb-1">የተማሪው የFirebase ID</label>
+                    <input type="text" id="tchStudentId" placeholder="ምሳሌ፦ student_01" class="w-full p-3 border rounded-xl bg-gray-50 outline-none">
+                </div>
+                <div>
+                    <label class="block text-gray-500 mb-1">የክትትል ሁኔታ</label>
+                    <select id="tchStatus" class="w-full p-3 border rounded-xl bg-gray-50 outline-none">
+                        <option value="ገብቷል/ች">ገብቷል/ች</option>
+                        <option value="ቀርቷል/ች">ቀርቷል/ች</option>
+                        <option value="አርፍዷል/ች">አርፍዷል/ች</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-500 mb-1">የተማሪ ፀባይ / ስነ-ምግባር</label>
+                    <input type="text" id="tchBehavior" placeholder="ምሳሌ፦ በጣም ጥሩ፣ በትኩረት ይከታተላል" class="w-full p-3 border rounded-xl bg-gray-50 outline-none">
+                </div>
+                <div>
+                    <label class="block text-gray-500 mb-1">የተማሪ ውጤት / ማርክ</label>
+                    <input type="text" id="tchScore" placeholder="ምሳሌ፦ 95/100 ወይም A" class="w-full p-3 border rounded-xl bg-gray-50 outline-none">
+                </div>
+                <div>
+                    <label class="block text-gray-500 mb-1">የመምህሩ ተጨማሪ አስተያየት</label>
+                    <textarea id="tchComment" rows="2" placeholder="ተጨማሪ ማስታወሻ እዚህ ይጻፉ..." class="w-full p-3 border rounded-xl bg-gray-50 outline-none resize-none"></textarea>
+                </div>
+            </div>
+
+            <button onclick="sendTeacherReport()" class="w-full bg-emerald-700 text-white py-3 rounded-xl font-black text-xs shadow hover:bg-emerald-800">📤 የዕለት ውሎ ሪፖርት ላክ</button>
+        </div>
+    </main>
+
+    <script>
+        const firebaseConfig = { 
+            apiKey: "AIzaSyBKw3ektgxdfvqcO-JHzJwjvfSkc-K_41A", 
+            authDomain: "safe-school-b3f87.firebaseapp.com", 
+            projectId: "safe-school-b3f87", 
+            storageBucket: "safe-school-b3f87.firebasestorage.app", 
+            messagingSenderId: "43051328645", 
+            appId: "1:43051328645:web:2664448d0b43a293daf5ec" 
+        };
+        firebase.initializeApp(firebaseConfig); 
+        const db = firebase.firestore();
+
+        function sendTeacherReport() {
+            const sId = document.getElementById('tchStudentId').value.trim();
+            const status = document.getElementById('tchStatus').value;
+            const behavior = document.getElementById('tchBehavior').value.trim();
+            const score = document.getElementById('tchScore').value.trim();
+            const comment = document.getElementById('tchComment').value.trim();
+            const todayStr = new Date().toLocaleDateString('am-ET');
+
+            if(!sId) return alert("እባክዎ የተማሪውን ID ያስገቡ!");
+
+            const newRecord = {
+                date: todayStr,
+                status: status,
+                behavior: behavior || "---",
+                score: score || "---",
+                teacherComment: comment || "የለም"
+            };
+
+            db.collection("students").doc(sId).update({
+                attendanceHistory: firebase.firestore.FieldValue.arrayUnion(newRecord)
+            }).then(() => {
+                alert("🎉 የዕለት ውሎ መረጃው በተሳካ ሁኔታ ተመዝግቧል!");
+                document.getElementById('tchStudentId').value = "";
+                document.getElementById('tchBehavior').value = "";
+                document.getElementById('tchScore').value = "";
+                document.getElementById('tchComment').value = "";
+            }).catch(err => alert("ስህተት አጋጥሟል፦ " + err));
+        }
+    </script>
+</body>
+</html>
 
