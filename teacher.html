@@ -1,1 +1,283 @@
 
+<!DOCTYPE html>
+<html lang="am">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Safe School - Parent Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+</head>
+<body class="bg-slate-50 min-h-screen font-sans pb-20 text-gray-800">
+
+    <header class="bg-[#0d7a70] text-white p-6 rounded-b-[40px] shadow-2xl text-center">
+        <div class="flex justify-between items-center max-w-7xl mx-auto">
+            <a href="index.html" class="bg-black/20 px-4 py-2 rounded-xl text-xs font-bold hover:bg-black/40"><i class="fas fa-home"></i> ዋና ገጽ</a>
+            <h1 class="text-xl font-black italic text-yellow-300">የወላጆች መቆጣጠሪያ ማዕከል</h1>
+            <div class="w-10"></div>
+        </div>
+    </header>
+
+    <!-- የወላጅ መግቢያ ፎርም -->
+    <div id="parent-auth-box" class="max-w-md mx-auto m-6 bg-white p-6 rounded-[30px] shadow-lg border space-y-4">
+        <h3 class="font-black text-xs text-center text-gray-700 italic border-b pb-2">🔐 በወላጅ ስልክ ቁጥርዎ ይግቡ</h3>
+        <div class="space-y-2">
+            <input type="tel" id="parentLoginPhone" placeholder="የመመዝገቢያ ስልክ ቁጥርዎን ያስገቡ..." class="w-full p-3 border rounded-xl font-bold bg-gray-50 outline-none text-center text-sm">
+            <button onclick="loginParent()" class="w-full bg-[#0d7a70] text-white py-3 rounded-xl font-black text-xs shadow hover:bg-[#0a6159]">የልጅዎን መረጃ ይመልከቱ</button>
+        </div>
+    </div>
+
+    <!-- ዋናው የወላጅ ዳሽቦርድ -->
+    <div id="parent-dashboard-main" class="hidden max-w-7xl mx-auto p-4 space-y-6">
+        
+        <!-- የተማሪ መረጃ ካርድ እና የጥቅል ሪፖርት በተን -->
+        <div class="bg-slate-900 text-white p-5 rounded-2xl shadow flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+                <h2 id="display-student-name" class="font-black text-sm">ተማሪ: ---</h2>
+                <p id="display-student-info" class="text-[10px] text-gray-400 mt-1">ክፍል: --- | መምህር: ---</p>
+            </div>
+            <div class="flex gap-2 w-full sm:w-auto">
+                <button onclick="showMyChildSummary()" class="bg-[#0d7a70] text-white px-3 py-1.5 rounded-xl text-xs font-black shadow-sm hover:bg-[#0a6159] flex-1 sm:flex-none">
+                    📊 የልጄ ወርሃዊ / ዓመታዊ ጥቅል ማጠቃለያ
+                </button>
+                <button onclick="logoutParent()" class="bg-gray-800 text-gray-300 px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-gray-700">ውጣ</button>
+            </div>
+        </div>
+
+        <!-- የሪፖርት ታሪክ ሰንጠረዥ -->
+        <div class="bg-white p-5 rounded-[30px] shadow border space-y-3">
+            <h3 class="font-black text-xs text-gray-800 italic border-b pb-2">📋 የልጅዎ የዕለት ተዕለት የክትትልና የቅራአት መዝገብ</h3>
+            <div class="overflow-x-auto rounded-2xl border">
+                <table class="w-full text-[11px] text-center border-collapse">
+                    <thead class="bg-slate-100 font-bold text-slate-700 border-b">
+                        <tr>
+                            <th class="p-3">ቀን</th>
+                            <th class="p-3">ሁኔታ</th>
+                            <th class="p-3 text-rose-600">🛑 ስህተት</th>
+                            <th class="p-3 text-amber-700">🗣️ መንተባተብ</th>
+                            <th class="p-3 text-emerald-700">✨ ተጅዊድ</th>
+                            <th class="p-3">ውጤት / ፀባይ</th>
+                            <th class="p-3 text-indigo-900">💬 የመምህር አስተያየት</th>
+                            <th class="p-3">✍️ የመምህር ፊርማ</th>
+                            <th class="p-3 bg-amber-50 text-amber-900">💬 የእርስዎ አስተያየት</th>
+                            <th class="p-3 bg-amber-50 text-amber-900">✍️ የእርስዎ ፊርማ</th>
+                            <th class="p-3">ድርጊት</th>
+                        </tr>
+                    </thead>
+                    <tbody id="parent-history-table-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- የወላጅ ፊርማ ሞዳል -->
+    <div id="approve-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-[30px] w-full max-w-md p-6 shadow-2xl border space-y-4">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="font-black text-sm text-gray-800">📝 ሪፖርት ማረጋገጫና ፊርማ ማኖሪያ</h3>
+                <button onclick="closeApproveModal()" class="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-xs"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <div class="space-y-3 text-xs font-bold">
+                <div class="space-y-1">
+                    <label class="block text-gray-500">ለአስተማሪው የሚተውት አስተያየት (ካለዎት)፦</label>
+                    <textarea id="pCommentInput" rows="2" placeholder="እዚህ ይጻፉ..." class="w-full p-2.5 border rounded-xl bg-gray-50 outline-none resize-none font-bold"></textarea>
+                </div>
+
+                <div class="space-y-1 bg-amber-50/50 p-3 rounded-xl border border-amber-200">
+                    <label class="block text-amber-950 font-black mb-1">✍️ የወላጅ ፊርማ (እዚህ በጣቶ ይፈርሙ) <span class="text-rose-500">*</span></label>
+                    <canvas id="parentSignatureCanvas" class="w-full h-24 bg-white border rounded-lg touch-none"></canvas>
+                    <button type="button" onclick="clearParentCanvas()" class="text-[10px] text-rose-600 underline font-bold pt-1 block">ፊርማ አጽዳ</button>
+                </div>
+            </div>
+
+            <button onclick="submitParentApproval()" class="w-full bg-[#0d7a70] text-white py-3 rounded-xl font-black text-xs shadow hover:bg-[#0a6159]"><i class="fas fa-check-circle mr-2"></i> አረጋግጥና አጽድቅ</button>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = { apiKey: "AIzaSyBKw3ektgxdfvqcO-JHzJwjvfSkc-K_41A", authDomain: "safe-school-b3f87.firebaseapp.com", projectId: "safe-school-b3f87", storageBucket: "safe-school-b3f87.firebasestorage.app", messagingSenderId: "43051328645", appId: "1:43051328645:web:2664448d0b43a293daf5ec" };
+        firebase.initializeApp(firebaseConfig); const db = firebase.firestore();
+
+        let loggedInStudentId = ""; let currentStudentData = null;
+        let selectedRecordIdForApprove = "";
+
+        function loginParent() {
+            const phone = document.getElementById('parentLoginPhone').value.trim();
+            if(!phone) return alert("እባክዎ የወላጅ ስልክ ቁጥር ያስገቡ!");
+
+            db.collection("students").where("parentPhone", "==", phone).get().then((snap) => {
+                if(snap.empty) { return alert("በዚህ ስልክ ቁጥር የተመዘገበ ተማሪ አልተገኘም!"); }
+                
+                const doc = snap.docs[0];
+                loggedInStudentId = doc.id;
+                
+                document.getElementById('parent-auth-box').classList.add('hidden');
+                document.getElementById('parent-dashboard-main').classList.remove('hidden');
+
+                startRealTimeParentListener();
+            });
+        }
+
+        function startRealTimeParentListener() {
+            db.collection("students").doc(loggedInStudentId).onSnapshot((doc) => {
+                if(!doc.exists) return;
+                currentStudentData = doc.data();
+
+                document.getElementById('display-student-name').innerText = `ተማሪ: ${currentStudentData.studentName}`;
+                document.getElementById('display-student-info').innerText = `ክፍል: ${currentStudentData.section || '5A'} | መምህር: ${currentStudentData.teacherName} (${currentStudentData.teacherPhone})`;
+
+                renderParentHistoryTable(currentStudentData.attendanceHistory || []);
+            });
+        }
+
+        // 📊 የወላጅ ጥቅል መረጃ ማጠቃለያ በተን (ከዕለታዊ ታሪክ ላይ በራሱ ጊዜ ያሰላል)
+        function showMyChildSummary() {
+            if(!currentStudentData) return;
+
+            const choice = prompt(`የልጅዎን የጥቅል ማጠቃለያ መረጃ ለመመልከት ምርጫዎን በቁጥር ያስገቡ፦\n\n1. ወርሃዊ ማጠቃለያ (የዚህን ወር ብቻ)\n2. ዓመታዊ ማጠቃለያ (የዚህን ዓመት ብቻ)`);
+            
+            if(choice !== "1" && choice !== "2") {
+                return alert("የተሳሳተ ምርጫ! እባክዎ 1 ወይም 2 ብቻ ያስገቡ።");
+            }
+
+            const history = currentStudentData.attendanceHistory || [];
+            let absentCount = 0; let lateCount = 0; let presentCount = 0; let filteredCount = 0;
+            let totalMistakes = 0;
+
+            const today = new Date();
+            const currentMonth = today.getMonth() + 1;
+            const currentYear = today.getFullYear();
+
+            history.forEach(h => {
+                const dateParts = h.date.split('/');
+                if(dateParts.length < 3) return;
+
+                let recordYear = parseInt(dateParts[2]);
+                const part0 = parseInt(dateParts[0]);
+                const part1 = parseInt(dateParts[1]);
+
+                if (choice === "1") {
+                    const isMatch = (recordYear === currentYear) && (part0 === currentMonth || part1 === currentMonth);
+                    if(!isMatch) return;
+                } else {
+                    if(recordYear !== currentYear) return;
+                }
+
+                filteredCount++;
+                const statusStr = h.status || "";
+                if(statusStr.includes("ቀርቷል")) { absentCount++; } 
+                else if(statusStr.includes("አርፍዷል")) { lateCount++; } 
+                else if(statusStr.includes("መጥቷል")) { presentCount++; }
+
+                if(h.mistakes) {
+                    totalMistakes += parseInt(h.mistakes) || 0;
+                }
+            });
+
+            const typeTitle = choice === "1" ? "📅 የወርሃዊ ጥቅል ማጠቃለያ" : "🗓️ የዓመታዊ ጥቅል ማጠቃለያ";
+            alert(`📊 ${typeTitle}፦\n\n✅ የመጣባቸው ቀናት ድምር፡ ${presentCount} ቀን\n⏰ ያረፈደባቸው ቀናት ድምር፡ ${lateCount} ቀን\n❌ የቀረባቸው ቀናት ድምር፡ ${absentCount} ቀን\n🛑 ጠቅላላ የተመዘገቡ ስህተቶች፡ ${totalMistakes}\n📝 ጠቅላላ የሪፖርት ቀናት፡ ${filteredCount}`);
+        }
+
+        function renderParentHistoryTable(historyArray) {
+            const tbody = document.getElementById('parent-history-table-body'); if(!tbody) return;
+            tbody.innerHTML = "";
+
+            if(historyArray.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="11" class="p-4 text-gray-400 italic">እስካሁን ምንም የተመዘገበ ሪፖርት የለም።</td></tr>`;
+                return;
+            }
+
+            historyArray.slice().reverse().forEach(h => {
+                tbody.innerHTML += `
+                    <tr class="border-b hover:bg-slate-50 font-bold text-gray-700 text-center">
+                        <td class="p-3 bg-gray-50/50">${h.date}</td>
+                        <td class="p-3 text-indigo-900">${h.status}</td>
+                        <td class="p-3 text-rose-600 font-mono text-xs">${h.mistakes || 0}</td>
+                        <td class="p-3 text-amber-700 text-xs">${h.stutter || '---'}</td>
+                        <td class="p-3 text-emerald-700 text-xs">${h.tajweed || '---'}</td>
+                        <td class="p-3">
+                            <div class="text-blue-600">${h.score}</div>
+                            <div class="text-[10px] text-gray-400">${h.behavior}</div>
+                        </td>
+                        <td class="p-3 text-left italic text-gray-600 max-w-[150px] truncate" title="${h.teacherComment}">"${h.teacherComment || ''}"</td>
+                        <td class="p-3"><img src="${h.teacherSignature}" class="h-8 mx-auto object-contain bg-white rounded p-0.5 border"></td>
+                        <td class="p-3 bg-amber-50/30 italic text-amber-950">${h.parentComment || '<span class="text-gray-400 font-normal">አልተጻፈም</span>'}</td>
+                        <td class="p-3 bg-amber-50/30">
+                            ${h.parentSignature ? `<img src="${h.parentSignature}" class="h-8 mx-auto object-contain bg-white rounded p-0.5 border">` : '<span class="text-rose-400 text-[10px]">🔄 አልተፈረመም</span>'}
+                        </td>
+                        <td class="p-3">
+                            ${h.parentApproved ? 
+                                `<span class="text-emerald-600 text-xs flex items-center justify-center gap-1"><i class="fas fa-check-circle"></i> ጸድቋል</span>` : 
+                                `<button onclick="openApproveModal('${h.recordId}')" class="bg-amber-500 hover:bg-amber-600 text-slate-900 px-3 py-1 rounded-xl text-[10px] font-black shadow-sm">እይ / አጽድቅ</button>`
+                            }
+                        </td>
+                    </tr>`;
+            });
+        }
+
+        function openApproveModal(recordId) {
+            selectedRecordIdForApprove = recordId;
+            document.getElementById('pCommentInput').value = "";
+            document.getElementById('approve-modal').classList.remove('hidden');
+            setTimeout(() => { setupParentCanvas(); }, 150);
+        }
+
+        let parentCanvas, parentCtx, parentDrawing = false;
+        function setupParentCanvas() {
+            parentCanvas = document.getElementById('parentSignatureCanvas'); if(!parentCanvas) return;
+            parentCtx = parentCanvas.getContext('2d');
+            parentCanvas.width = parentCanvas.parentElement.clientWidth; parentCanvas.height = 96;
+            parentCtx.strokeStyle = "#1e293b"; parentCtx.lineWidth = 3; parentCtx.lineCap = "round";
+            
+            function getPos(e) { const r = parentCanvas.getBoundingClientRect(); if(e.touches && e.touches.length>0){return {x:e.touches[0].clientX-r.left, y:e.touches[0].clientY-r.top};} return {x:e.offsetX, y:e.offsetY}; }
+            function start(e) { e.preventDefault(); parentDrawing=true; const p=getPos(e); parentCtx.beginPath(); parentCtx.moveTo(p.x, p.y); }
+            function move(e) { if(!parentDrawing) return; e.preventDefault(); const p=getPos(e); parentCtx.lineTo(p.x, p.y); parentCtx.stroke(); }
+            parentCanvas.onmousedown = start; parentCanvas.onmousemove = move; parentCanvas.onmouseup = () => parentDrawing=false;
+            parentCanvas.addEventListener('touchstart', start, {passive:false}); parentCanvas.addEventListener('touchmove', move, {passive:false}); parentCanvas.addEventListener('touchend', () => parentDrawing=false);
+        }
+        function clearParentCanvas() { if(parentCtx) parentCtx.clearRect(0,0,parentCanvas.width,parentCanvas.height); }
+        function isParentCanvasBlank() { if(!parentCanvas) return true; return parentCanvas.getContext('2d').getImageData(0,0,parentCanvas.width,parentCanvas.height).data.every(p => p === 0); }
+
+        function submitParentApproval() {
+            const comment = document.getElementById('pCommentInput').value.trim();
+            if(isParentCanvasBlank()) return alert("እባክዎ እዚህ ሳጥን ውስጥ በጣቶ ይፈርሙ!");
+
+            const parentSigData = parentCanvas.toDataURL();
+            let history = currentStudentData.attendanceHistory || [];
+
+            let recordFound = false;
+            for(let i=0; i<history.length; i++) {
+                if(history[i].recordId === selectedRecordIdForApprove) {
+                    history[i].parentComment = comment || "ተመልክቻለሁ፣ ጀዛኩሙላሁ ኸይረን";
+                    history[i].parentSignature = parentSigData;
+                    history[i].parentApproved = true;
+                    recordFound = true;
+                    break;
+                }
+            }
+
+            if(!recordFound) return alert("ሪፖርቱ አልተገኘም!");
+
+            db.collection("students").doc(loggedInStudentId).update({
+                attendanceHistory: history
+            }).then(() => {
+                alert("ሪፖርቱን በተሳካ ሁኔታ አረጋግጠው አጽድቀዋል!");
+                closeApproveModal();
+            });
+        }
+
+        function closeApproveModal() { document.getElementById('approve-modal').classList.add('hidden'); }
+        
+        function logoutParent() {
+            loggedInStudentId = ""; currentStudentData = null;
+            document.getElementById('parent-dashboard-main').classList.add('hidden');
+            document.getElementById('parent-auth-box').classList.remove('hidden');
+            document.getElementById('parentLoginPhone').value = "";
+        }
+    </script>
+</body>
+</html>
